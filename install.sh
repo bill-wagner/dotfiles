@@ -88,6 +88,18 @@ for line in "${HISTORY_LINES[@]}"; do
   fi
 done
 
+# asdf plugins
+ASDF_PLUGINS=(nodejs python ruby sqlite yarn)
+log "Installing asdf plugins..."
+for plugin in "${ASDF_PLUGINS[@]}"; do
+  if asdf plugin list | grep -q "^${plugin}$"; then
+    log "asdf plugin already installed, skipping: $plugin"
+  else
+    asdf plugin add "$plugin"
+    log "Added asdf plugin: $plugin"
+  fi
+done
+
 # asdf tool installation
 if [ -f ".tool-versions" ]; then
   log "Found .tool-versions, running asdf install..."
