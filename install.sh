@@ -88,4 +88,13 @@ for line in "${HISTORY_LINES[@]}"; do
   fi
 done
 
+# asdf tool installation
+if [ -f ".tool-versions" ]; then
+  log "Found .tool-versions, running asdf install..."
+  asdf install
+  log "asdf install complete."
+else
+  log "No .tool-versions found, skipping asdf install."
+fi
+
 log "Done."
