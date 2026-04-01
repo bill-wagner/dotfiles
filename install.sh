@@ -23,4 +23,13 @@ else
   log "oh-my-posh installed."
 fi
 
+# asdf
+if command -v asdf &>/dev/null; then
+  log "asdf already installed, skipping."
+else
+  log "Installing asdf via Homebrew..."
+  brew install asdf
+  log "asdf installed."
+fi
+
 log "Done."
