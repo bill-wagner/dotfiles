@@ -32,4 +32,22 @@ else
   log "asdf installed."
 fi
 
+# Shell aliases
+ALIASES=(
+  "alias grep='grep --color'"
+  "alias ls='ls -G'"
+  "alias ll='ls -l'"
+  "alias l='ls -CF'"
+)
+BASHRC="$HOME/.bashrc"
+log "Configuring shell aliases in $BASHRC..."
+for alias_line in "${ALIASES[@]}"; do
+  if grep -qF "$alias_line" "$BASHRC" 2>/dev/null; then
+    log "Already present, skipping: $alias_line"
+  else
+    echo "$alias_line" >> "$BASHRC"
+    log "Added: $alias_line"
+  fi
+done
+
 log "Done."
