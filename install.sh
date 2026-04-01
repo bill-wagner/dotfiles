@@ -50,6 +50,16 @@ for alias_line in "${ALIASES[@]}"; do
   fi
 done
 
+# Disable terminal flow control (enables CTRL+S for forward history search)
+FLOW_CONTROL_LINE="stty -ixon"
+log "Configuring terminal flow control in $BASHRC..."
+if grep -qF "$FLOW_CONTROL_LINE" "$BASHRC" 2>/dev/null; then
+  log "Already present, skipping: $FLOW_CONTROL_LINE"
+else
+  echo "$FLOW_CONTROL_LINE" >> "$BASHRC"
+  log "Added: $FLOW_CONTROL_LINE"
+fi
+
 # Eternal bash history
 HISTORY_LINES=(
   "export HISTFILESIZE=999999"
