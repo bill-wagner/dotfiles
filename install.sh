@@ -50,4 +50,22 @@ for alias_line in "${ALIASES[@]}"; do
   fi
 done
 
+# Eternal bash history
+HISTORY_LINES=(
+  "export HISTFILESIZE=999999"
+  "export HISTSIZE=999999"
+  'export HISTTIMEFORMAT="[%F %T] "'
+  "export HISTFILE=~/.bash_eternal_history"
+  'PROMPT_COMMAND="history -a; $PROMPT_COMMAND"'
+)
+log "Configuring eternal bash history in $BASHRC..."
+for line in "${HISTORY_LINES[@]}"; do
+  if grep -qF "$line" "$BASHRC" 2>/dev/null; then
+    log "Already present, skipping: $line"
+  else
+    echo "$line" >> "$BASHRC"
+    log "Added: $line"
+  fi
+done
+
 log "Done."
