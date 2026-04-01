@@ -50,6 +50,16 @@ for alias_line in "${ALIASES[@]}"; do
   fi
 done
 
+# Opt out of Homebrew analytics
+HOMEBREW_LINE="export HOMEBREW_NO_ANALYTICS=1"
+log "Configuring Homebrew analytics opt-out in $BASHRC..."
+if grep -qF "$HOMEBREW_LINE" "$BASHRC" 2>/dev/null; then
+  log "Already present, skipping: $HOMEBREW_LINE"
+else
+  echo "$HOMEBREW_LINE" >> "$BASHRC"
+  log "Added: $HOMEBREW_LINE"
+fi
+
 # Disable terminal flow control (enables CTRL+S for forward history search)
 FLOW_CONTROL_LINE="stty -ixon"
 log "Configuring terminal flow control in $BASHRC..."
