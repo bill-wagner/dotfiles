@@ -35,7 +35,7 @@ fi
 # Shell aliases
 ALIASES=(
   "alias grep='grep --color'"
-  "alias ls='ls -G'"
+  "alias ls='ls --color'"
   "alias ll='ls -l'"
   "alias l='ls -CF'"
 )
