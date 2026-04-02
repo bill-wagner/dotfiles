@@ -8,6 +8,9 @@ log() {
 OS="$(uname -s)"
 log "Detected OS: $OS"
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BASHRC="$HOME/.bashrc"
+
 # Homebrew
 if command -v brew &>/dev/null; then
   log "Homebrew already installed, skipping."
@@ -34,6 +37,26 @@ else
   log "Installing oh-my-posh via Homebrew..."
   brew install jandedobbeleer/oh-my-posh/oh-my-posh
   log "oh-my-posh installed."
+fi
+
+# oh-my-posh theme and shell initialization
+OMP_THEME_DIR="$HOME/.oh-my-posh-custom-themes"
+OMP_THEME_SRC="$SCRIPT_DIR/custom-atomic.omp.json"
+OMP_THEME_DEST="$OMP_THEME_DIR/custom-atomic.omp.json"
+OMP_INIT_LINE='eval "$(oh-my-posh init bash --config $HOME/.oh-my-posh-custom-themes/custom-atomic.omp.json)"'
+log "Configuring oh-my-posh theme..."
+mkdir -p "$OMP_THEME_DIR"
+if [ -f "$OMP_THEME_SRC" ]; then
+  cp "$OMP_THEME_SRC" "$OMP_THEME_DEST"
+  log "Copied custom-atomic.omp.json to $OMP_THEME_DIR."
+else
+  log "WARNING: $OMP_THEME_SRC not found, skipping theme copy."
+fi
+if grep -qxF "$OMP_INIT_LINE" "$BASHRC" 2>/dev/null; then
+  log "oh-my-posh init already in $BASHRC, skipping."
+else
+  echo "$OMP_INIT_LINE" >> "$BASHRC"
+  log "Added oh-my-posh init to $BASHRC."
 fi
 
 # asdf (git clone for cross-platform reliability)
@@ -69,8 +92,6 @@ else
   log "No .tool-versions found, skipping asdf install."
 fi
 
-BASHRC="$HOME/.bashrc"
-
 # ls alias is OS-dependent (macOS uses -G, Linux uses --color)
 if [ "$OS" = "Darwin" ]; then
   LS_ALIAS="alias ls='ls -G'"
@@ -87,7 +108,7 @@ ALIASES=(
 )
 log "Configuring shell aliases in $BASHRC..."
 for alias_line in "${ALIASES[@]}"; do
-  if grep -qF "$alias_line" "$BASHRC" 2>/dev/null; then
+  if grep -qxF "$alias_line" "$BASHRC" 2>/dev/null; then
     log "Already present, skipping: $alias_line"
   else
     echo "$alias_line" >> "$BASHRC"
