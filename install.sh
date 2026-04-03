@@ -96,6 +96,12 @@ else
   log "No .tool-versions found, skipping asdf install."
 fi
 
+# Global .gitignore
+log "Configuring global .gitignore..."
+cp "$SCRIPT_DIR/.gitignore_global" "$HOME/.gitignore_global"
+git config --global core.excludesfile "$HOME/.gitignore_global"
+log "Global .gitignore configured."
+
 # SSH key — add to macOS Keychain so passphrase is not required on future logins
 if [ "$OS" = "Darwin" ]; then
   if [ -f "$HOME/.ssh/id_ed25519" ]; then
