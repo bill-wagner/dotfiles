@@ -32,6 +32,15 @@ else
   log "Homebrew installed."
 fi
 
+# git-delta
+if command -v delta &>/dev/null; then
+  log "git-delta already installed, skipping."
+else
+  log "Installing git-delta via Homebrew..."
+  brew install git-delta
+  log "git-delta installed."
+fi
+
 # oh-my-posh
 if command -v oh-my-posh &>/dev/null; then
   log "oh-my-posh already installed, skipping."
