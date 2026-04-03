@@ -96,6 +96,17 @@ else
   log "No .tool-versions found, skipping asdf install."
 fi
 
+# SSH key — add to macOS Keychain so passphrase is not required on future logins
+if [ "$OS" = "Darwin" ]; then
+  if [ -f "$HOME/.ssh/id_ed25519" ]; then
+    log "Adding SSH key to macOS Keychain..."
+    ssh-add --apple-use-keychain "$HOME/.ssh/id_ed25519"
+    log "SSH key added to Keychain."
+  else
+    log "No ~/.ssh/id_ed25519 found, skipping Keychain ssh-add."
+  fi
+fi
+
 # --- .bashrc configuration ---
 # Order matters: PATH setup (Homebrew, asdf) must come before anything that uses those tools (oh-my-posh).
 
