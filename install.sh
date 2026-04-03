@@ -208,26 +208,4 @@ for line in "${HISTORY_LINES[@]}"; do
   fi
 done
 
-# Claude Code Dev Container permissions
-if [ "${REMOTE_CONTAINERS:-}" = "true" ] || [ "${CODESPACES:-}" = "true" ]; then
-  CLAUDE_SETTINGS_DIR=".claude"
-  CLAUDE_SETTINGS_LOCAL="$CLAUDE_SETTINGS_DIR/settings.local.json"
-  if [ -f "$CLAUDE_SETTINGS_LOCAL" ]; then
-    log "Claude Code settings.local.json already exists, skipping."
-  else
-    log "Dev Container detected — creating $CLAUDE_SETTINGS_LOCAL with bypassPermissions..."
-    mkdir -p "$CLAUDE_SETTINGS_DIR"
-    cat > "$CLAUDE_SETTINGS_LOCAL" <<'EOF'
-{
-  "permissions": {
-    "defaultMode": "bypassPermissions"
-  }
-}
-EOF
-    log "Created $CLAUDE_SETTINGS_LOCAL."
-  fi
-else
-  log "Not in a Dev Container, skipping Claude Code settings.local.json."
-fi
-
 log "Done."
