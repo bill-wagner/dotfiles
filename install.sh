@@ -68,7 +68,7 @@ if [ -d "$HOME/.asdf" ]; then
   log "asdf already installed, skipping."
 else
   log "Installing asdf..."
-  git clone https://github.com/asdf-vm/asdf.git "$HOME/.asdf"
+  git clone https://github.com/asdf-vm/asdf.git "$HOME/.asdf" --branch v0.15.0
   log "asdf installed."
 fi
 # Source asdf for the rest of this script
