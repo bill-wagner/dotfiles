@@ -76,7 +76,7 @@ fi
 . "$HOME/.asdf/asdf.sh"
 
 # asdf plugins
-ASDF_PLUGINS=(nodejs python ruby sqlite yarn postgres kubectl elixir golang)
+ASDF_PLUGINS=(nodejs python ruby sqlite yarn postgres kubectl elixir golang helm)
 log "Installing asdf plugins..."
 for plugin in "${ASDF_PLUGINS[@]}"; do
   if asdf plugin list | grep -q "^${plugin}$"; then
