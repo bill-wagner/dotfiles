@@ -87,13 +87,25 @@ for plugin in "${ASDF_PLUGINS[@]}"; do
   fi
 done
 
-# asdf tool installation
-if [ -f ".tool-versions" ]; then
-  log "Found .tool-versions, running asdf install..."
-  asdf install
-  log "asdf install complete."
+# asdf tool installation — default tools from dotfiles
+log "Installing default tools from dotfiles .tool-versions..."
+(cd "$SCRIPT_DIR" && asdf install)
+log "Default tools installed."
+
+# Copy dotfiles .tool-versions to ~/.tool-versions as global fallback if not already present
+if [ ! -f "$HOME/.tool-versions" ]; then
+  log "Copying .tool-versions to ~/.tool-versions as global default..."
+  cp "$SCRIPT_DIR/.tool-versions" "$HOME/.tool-versions"
+  log "Copied .tool-versions to ~/.tool-versions."
 else
-  log "No .tool-versions found, skipping asdf install."
+  log "~/.tool-versions already exists, skipping."
+fi
+
+# asdf tool installation — project-specific tools
+if [ -f ".tool-versions" ] && [ "$(pwd)" != "$SCRIPT_DIR" ]; then
+  log "Found .tool-versions in workspace, running asdf install..."
+  asdf install
+  log "Project tools installed."
 fi
 
 # Global .gitignore
