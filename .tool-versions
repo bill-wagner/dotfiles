@@ -1,0 +1,9 @@
+ruby 3.3.9
+nodejs 20.11.1
+postgres 15.14
+yarn 1.22.16
+kubectl 1.23.3
+elixir 1.11.1
+sqlite 3.37.0
+python 3.10.13
+golang 1.21.6
