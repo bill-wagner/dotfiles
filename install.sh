@@ -13,7 +13,24 @@ BASHRC="$HOME/.bashrc"
 
 # --- Tool installation ---
 
-# Homebrew
+# Linux prerequisites for Homebrew
+if [ "$OS" = "Linux" ]; then
+  log "Installing Linux prerequisites for Homebrew..."
+  sudo apt-get update -qq
+  sudo apt-get install -y -qq build-essential curl file git
+  log "Linux prerequisites installed."
+fi
+
+# Homebrew — ensure it's in PATH if already installed at a known location
+if ! command -v brew &>/dev/null; then
+  if [ "$OS" = "Darwin" ]; then
+    [ -x "/opt/homebrew/bin/brew" ] && eval "$(/opt/homebrew/bin/brew shellenv)"
+    [ -x "/usr/local/bin/brew" ]    && eval "$(/usr/local/bin/brew shellenv)"
+  else
+    [ -x "/home/linuxbrew/.linuxbrew/bin/brew" ] && eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+  fi
+fi
+
 if command -v brew &>/dev/null; then
   log "Homebrew already installed, skipping."
 else
@@ -72,7 +89,7 @@ else
   log "WARNING: $OMP_THEME_SRC not found, skipping theme copy."
 fi
 
-# asdf (git clone for cross-platform reliability)
+# asdf (git clone for cross-platform reliability, pinned to last bash-based version)
 if [ -d "$HOME/.asdf" ]; then
   log "asdf already installed, skipping."
 else
