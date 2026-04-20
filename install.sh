@@ -41,6 +41,15 @@ else
   log "git-delta installed."
 fi
 
+# ag (the_silver_searcher)
+if command -v ag &>/dev/null; then
+  log "ag already installed, skipping."
+else
+  log "Installing ag via Homebrew..."
+  brew install the_silver_searcher
+  log "ag installed."
+fi
+
 # oh-my-posh
 if command -v oh-my-posh &>/dev/null; then
   log "oh-my-posh already installed, skipping."
