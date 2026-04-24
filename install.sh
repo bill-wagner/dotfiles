@@ -67,6 +67,15 @@ else
   log "ag installed."
 fi
 
+# circleci CLI
+if command -v circleci &>/dev/null; then
+  log "circleci CLI already installed, skipping."
+else
+  log "Installing circleci CLI via Homebrew..."
+  brew install circleci
+  log "circleci CLI installed."
+fi
+
 # oh-my-posh
 if command -v oh-my-posh &>/dev/null; then
   log "oh-my-posh already installed, skipping."
