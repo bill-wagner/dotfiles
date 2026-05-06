@@ -21,6 +21,13 @@ BASHRC="$HOME/.bashrc"
 
 # --- Tool installation ---
 
+# MSYS2: inherit full Windows PATH so Windows-installed tools (dotnet, etc.) are accessible
+if [ "$OS_TYPE" = "MSYS2" ]; then
+  log "Setting MSYS2_PATH_TYPE=inherit so Windows PATH is inherited..."
+  setx MSYS2_PATH_TYPE inherit
+  log "MSYS2_PATH_TYPE set. Restart your terminal for it to take effect."
+fi
+
 # Linux prerequisites for Homebrew
 if [ "$OS_TYPE" = "Linux" ]; then
   log "Installing Linux prerequisites for Homebrew..."
