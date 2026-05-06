@@ -141,7 +141,12 @@ else
 fi
 
 # oh-my-posh theme
-OMP_THEME_DIR="$HOME/.oh-my-posh-custom-themes"
+# On MSYS2, use $USERPROFILE so the path matches $HOME at runtime (after HOME is set to $USERPROFILE in .bashrc)
+if [ "$OS_TYPE" = "MSYS2" ]; then
+  OMP_THEME_DIR="$USERPROFILE/.oh-my-posh-custom-themes"
+else
+  OMP_THEME_DIR="$HOME/.oh-my-posh-custom-themes"
+fi
 OMP_THEME_SRC="$SCRIPT_DIR/custom-atomic.omp.json"
 OMP_THEME_DEST="$OMP_THEME_DIR/custom-atomic.omp.json"
 log "Configuring oh-my-posh theme..."
@@ -237,7 +242,19 @@ fi
 # --- .bashrc configuration ---
 # Order matters: PATH setup (Homebrew, asdf, MSYS2 mingw64) must come before anything that uses those tools (oh-my-posh).
 
-# 1. MSYS2: add /mingw64/bin to PATH so mingw64 packages (oh-my-posh, etc.) are available in all terminal types
+# 1. MSYS2: set HOME to $USERPROFILE so Windows-native tools (Claude, etc.) find config in the right place
+if [ "$OS_TYPE" = "MSYS2" ]; then
+  HOME_LINE='export HOME="$USERPROFILE"'
+  log "Configuring HOME=\$USERPROFILE in $BASHRC..."
+  if grep -qxF "$HOME_LINE" "$BASHRC" 2>/dev/null; then
+    log "HOME already set in $BASHRC, skipping."
+  else
+    echo "$HOME_LINE" >> "$BASHRC"
+    log "Added HOME=\$USERPROFILE to $BASHRC."
+  fi
+fi
+
+# 2. MSYS2: add /mingw64/bin to PATH so mingw64 packages (oh-my-posh, etc.) are available in all terminal types
 if [ "$OS_TYPE" = "MSYS2" ]; then
   MINGW_PATH='export PATH="/mingw64/bin:$PATH"'
   log "Configuring MINGW64 PATH in $BASHRC..."
@@ -249,7 +266,7 @@ if [ "$OS_TYPE" = "MSYS2" ]; then
   fi
 fi
 
-# 2. Homebrew shell environment (sets PATH so Homebrew tools are available; not applicable on MSYS2)
+# 3. Homebrew shell environment (sets PATH so Homebrew tools are available; not applicable on MSYS2)
 if [ "$OS_TYPE" != "MSYS2" ]; then
   if [ "$OS_TYPE" = "Darwin" ]; then
     if [ -x "/opt/homebrew/bin/brew" ]; then
@@ -269,7 +286,7 @@ if [ "$OS_TYPE" != "MSYS2" ]; then
   fi
 fi
 
-# 3. asdf shell integration (sets PATH so asdf-managed tools are available; not applicable on MSYS2)
+# 4. asdf shell integration (sets PATH so asdf-managed tools are available; not applicable on MSYS2)
 if [ "$OS_TYPE" != "MSYS2" ]; then
   ASDF_SOURCE='. "$HOME/.asdf/asdf.sh"'
   log "Configuring asdf shell integration in $BASHRC..."
@@ -281,7 +298,7 @@ if [ "$OS_TYPE" != "MSYS2" ]; then
   fi
 fi
 
-# 4. oh-my-posh init (requires Homebrew to be on PATH on macOS/Linux)
+# 5. oh-my-posh init (requires Homebrew to be on PATH on macOS/Linux)
 OMP_INIT_LINE='eval "$(oh-my-posh init bash --config $HOME/.oh-my-posh-custom-themes/custom-atomic.omp.json)"'
 log "Configuring oh-my-posh init in $BASHRC..."
 if grep -qxF "$OMP_INIT_LINE" "$BASHRC" 2>/dev/null; then
@@ -291,7 +308,7 @@ else
   log "Added oh-my-posh init to $BASHRC."
 fi
 
-# 5. Shell aliases
+# 6. Shell aliases
 if [ "$OS_TYPE" = "Darwin" ]; then
   LS_ALIAS="alias ls='ls -G'"
 else
@@ -313,7 +330,7 @@ for alias_line in "${ALIASES[@]}"; do
   fi
 done
 
-# 6. Homebrew analytics opt-out (not applicable on MSYS2)
+# 7. Homebrew analytics opt-out (not applicable on MSYS2)
 if [ "$OS_TYPE" != "MSYS2" ]; then
   HOMEBREW_LINE="export HOMEBREW_NO_ANALYTICS=1"
   log "Configuring Homebrew analytics opt-out in $BASHRC..."
@@ -325,7 +342,7 @@ if [ "$OS_TYPE" != "MSYS2" ]; then
   fi
 fi
 
-# 7. Disable terminal flow control (enables CTRL+S for forward history search)
+# 8. Disable terminal flow control (enables CTRL+S for forward history search)
 FLOW_CONTROL_LINE="stty -ixon"
 log "Configuring terminal flow control in $BASHRC..."
 if grep -qxF "$FLOW_CONTROL_LINE" "$BASHRC" 2>/dev/null; then
@@ -335,7 +352,7 @@ else
   log "Added: $FLOW_CONTROL_LINE"
 fi
 
-# 8. Eternal bash history
+# 9. Eternal bash history
 HISTORY_LINES=(
   "export HISTFILESIZE=999999"
   "export HISTSIZE=999999"
@@ -353,7 +370,7 @@ for line in "${HISTORY_LINES[@]}"; do
   fi
 done
 
-# 9. SSH agent (MSYS2 only — macOS uses Keychain, Linux typically has a system agent)
+# 10. SSH agent (MSYS2 only — macOS uses Keychain, Linux typically has a system agent)
 # Reuses an existing agent across terminal windows; starts a new one (prompting for passphrase once) if needed.
 if [ "$OS_TYPE" = "MSYS2" ]; then
   log "Configuring SSH agent setup in $BASHRC..."
