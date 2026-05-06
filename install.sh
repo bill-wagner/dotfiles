@@ -188,7 +188,7 @@ cp "$SCRIPT_DIR/.gitignore_global" "$HOME/.gitignore_global"
 git config --global core.excludesfile "$HOME/.gitignore_global"
 log "Global .gitignore configured."
 
-# SSH key — add to macOS Keychain so passphrase is not required on future logins
+# SSH key — add to the platform keychain/agent so passphrase is not required on future logins
 if [ "$OS_TYPE" = "Darwin" ]; then
   if [ -f "$HOME/.ssh/id_ed25519" ]; then
     log "Adding SSH key to macOS Keychain..."
@@ -196,6 +196,21 @@ if [ "$OS_TYPE" = "Darwin" ]; then
     log "SSH key added to Keychain."
   else
     log "No ~/.ssh/id_ed25519 found, skipping Keychain ssh-add."
+  fi
+elif [ "$OS_TYPE" = "MSYS2" ]; then
+  if [ -f "$HOME/.ssh/id_ed25519" ]; then
+    if sc.exe query ssh-agent 2>/dev/null | grep -q "RUNNING"; then
+      log "Adding SSH key to Windows OpenSSH agent..."
+      ssh-add "$HOME/.ssh/id_ed25519"
+      log "SSH key added."
+    else
+      log "WARNING: Windows OpenSSH Authentication Agent service is not running."
+      log "To enable it, run the following in PowerShell as Administrator:"
+      log "  Set-Service ssh-agent -StartupType Automatic; Start-Service ssh-agent"
+      log "Then re-run install.sh to add your SSH key."
+    fi
+  else
+    log "No ~/.ssh/id_ed25519 found, skipping SSH key setup."
   fi
 fi
 
