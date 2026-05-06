@@ -343,4 +343,28 @@ for line in "${HISTORY_LINES[@]}"; do
   fi
 done
 
+# 9. SSH agent (MSYS2 only — macOS uses Keychain, Linux typically has a system agent)
+# Reuses an existing agent across terminal windows; starts a new one (prompting for passphrase once) if needed.
+if [ "$OS_TYPE" = "MSYS2" ]; then
+  log "Configuring SSH agent setup in $BASHRC..."
+  if grep -qF "SSH_ENV=" "$BASHRC" 2>/dev/null; then
+    log "SSH agent setup already in $BASHRC, skipping."
+  else
+    cat >> "$BASHRC" << 'EOF'
+# SSH agent — reuse existing agent if still running, otherwise start a new one
+SSH_ENV="$HOME/.ssh/agent.env"
+if [ -f "$SSH_ENV" ]; then
+  . "$SSH_ENV" > /dev/null
+fi
+if [ -z "${SSH_AGENT_PID:-}" ] || ! kill -0 "$SSH_AGENT_PID" 2>/dev/null; then
+  ssh-agent | sed 's/^echo/#echo/' > "$SSH_ENV"
+  chmod 600 "$SSH_ENV"
+  . "$SSH_ENV" > /dev/null
+  [ -f "$HOME/.ssh/id_ed25519" ] && ssh-add "$HOME/.ssh/id_ed25519"
+fi
+EOF
+    log "Added SSH agent setup to $BASHRC."
+  fi
+fi
+
 log "Done."
