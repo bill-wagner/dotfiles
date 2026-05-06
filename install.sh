@@ -64,7 +64,7 @@ if command -v delta &>/dev/null; then
   log "git-delta already installed, skipping."
 elif [ "$OS_TYPE" = "MSYS2" ]; then
   log "Installing git-delta via pacman..."
-  pacman -S --noconfirm --needed mingw-w64-x86_64-git-delta
+  pacman -S --noconfirm --needed mingw-w64-ucrt-x86_64-delta
   log "git-delta installed."
 else
   log "Installing git-delta via Homebrew..."
