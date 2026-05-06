@@ -26,6 +26,9 @@ if [ "$OS_TYPE" = "MSYS2" ]; then
   log "Setting MSYS2_PATH_TYPE=inherit so Windows PATH is inherited..."
   setx MSYS2_PATH_TYPE inherit
   log "MSYS2_PATH_TYPE set. Restart your terminal for it to take effect."
+  log "Setting MSYS=winsymlinks:nativestrict so ln -s creates real Windows symlinks..."
+  setx MSYS winsymlinks:nativestrict
+  log "MSYS set. Restart your terminal for it to take effect."
 fi
 
 # Linux prerequisites for Homebrew
