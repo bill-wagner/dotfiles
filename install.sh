@@ -89,7 +89,18 @@ fi
 if command -v circleci &>/dev/null; then
   log "circleci CLI already installed, skipping."
 elif [ "$OS_TYPE" = "MSYS2" ]; then
-  log "WARNING: circleci CLI is not available via pacman; skipping. Install manually if needed."
+  log "Installing circleci CLI from GitHub releases..."
+  CIRCLECI_VERSION="$(curl -fsSL https://api.github.com/repos/CircleCI-Public/circleci-cli/releases/latest \
+    | grep '"tag_name"' | sed 's/.*"v\([^"]*\)".*/\1/')"
+  log "Latest circleci CLI version: ${CIRCLECI_VERSION}"
+  CIRCLECI_TMP="$(mktemp -d)"
+  curl -fsSL "https://github.com/CircleCI-Public/circleci-cli/releases/download/v${CIRCLECI_VERSION}/circleci-cli_${CIRCLECI_VERSION}_windows_amd64.zip" \
+    -o "${CIRCLECI_TMP}/circleci.zip"
+  unzip -o "${CIRCLECI_TMP}/circleci.zip" -d "${CIRCLECI_TMP}"
+  mkdir -p /usr/local/bin
+  find "${CIRCLECI_TMP}" -name "circleci.exe" -exec cp {} /usr/local/bin/circleci \;
+  rm -rf "${CIRCLECI_TMP}"
+  log "circleci CLI installed."
 else
   log "Installing circleci CLI via Homebrew..."
   brew install circleci
