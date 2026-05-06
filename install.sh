@@ -90,6 +90,7 @@ if command -v circleci &>/dev/null; then
   log "circleci CLI already installed, skipping."
 elif [ "$OS_TYPE" = "MSYS2" ]; then
   log "Installing circleci CLI from GitHub releases..."
+  pacman -S --noconfirm --needed unzip
   CIRCLECI_VERSION="$(curl -fsSL https://api.github.com/repos/CircleCI-Public/circleci-cli/releases/latest \
     | grep '"tag_name"' | sed 's/.*"v\([^"]*\)".*/\1/')"
   log "Latest circleci CLI version: ${CIRCLECI_VERSION}"
