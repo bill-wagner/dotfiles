@@ -107,6 +107,15 @@ else
   log "circleci CLI installed."
 fi
 
+# Additional MSYS2 packages
+if [ "$OS_TYPE" = "MSYS2" ]; then
+  log "Installing additional MSYS2 base packages..."
+  pacman -S --noconfirm --needed bash-completion less perl python rsync vim
+  log "Installing additional MSYS2 mingw64 packages..."
+  pacman -S --noconfirm --needed mingw-w64-x86_64-jq mingw-w64-x86_64-python
+  log "Additional MSYS2 packages installed."
+fi
+
 # oh-my-posh
 if command -v oh-my-posh &>/dev/null; then
   log "oh-my-posh already installed, skipping."
