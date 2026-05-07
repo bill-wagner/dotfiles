@@ -100,11 +100,8 @@ if command -v jf &>/dev/null; then
   log "JFrog CLI already installed, skipping."
 elif [ "$OS_TYPE" = "MSYS2" ]; then
   log "Installing JFrog CLI from releases.jfrog.io..."
-  JFROG_VERSION="$(curl -fsSL https://api.github.com/repos/jfrog/jfrog-cli/releases/latest \
-    | grep '"tag_name"' | sed 's/.*"v\([^"]*\)".*/\1/')"
-  log "Latest JFrog CLI version: ${JFROG_VERSION}"
   mkdir -p /usr/local/bin
-  curl -fsSL "https://releases.jfrog.io/artifactory/jfrog-cli/v2-jf/${JFROG_VERSION}/jfrog-cli-windows-amd64/jf.exe" \
+  curl -fsSL "https://releases.jfrog.io/artifactory/jfrog-cli/v2-jf/[RELEASE]/jfrog-cli-windows-amd64/jf.exe" \
     -o /usr/local/bin/jf.exe
   log "JFrog CLI installed."
 else
