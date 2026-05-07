@@ -274,21 +274,6 @@ if [ "$OS_TYPE" = "Darwin" ]; then
   else
     log "No ~/.ssh/id_ed25519 found, skipping Keychain ssh-add."
   fi
-elif [ "$OS_TYPE" = "MSYS2" ]; then
-  if [ -f "$HOME/.ssh/id_ed25519" ]; then
-    if sc.exe query ssh-agent 2>/dev/null | grep -q "RUNNING"; then
-      log "Adding SSH key to Windows OpenSSH agent..."
-      ssh-add "$HOME/.ssh/id_ed25519"
-      log_success "SSH key added."
-    else
-      log_warning "WARNING: Windows OpenSSH Authentication Agent service is not running."
-      log_warning "To enable it, run the following in PowerShell as Administrator:"
-      log_warning "  Set-Service ssh-agent -StartupType Automatic; Start-Service ssh-agent"
-      log_warning "Then re-run install.sh to add your SSH key."
-    fi
-  else
-    log "No ~/.ssh/id_ed25519 found, skipping SSH key setup."
-  fi
 fi
 
 # --- .bashrc configuration ---
