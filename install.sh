@@ -1,9 +1,25 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+YELLOW='\033[0;33m'
+NC='\033[0m'
+
 log() {
   echo "[install] $*"
 }
+log_success() {
+  echo -e "${GREEN}[install]${NC} $*"
+}
+log_error() {
+  echo -e "${RED}[install]${NC} $*" >&2
+}
+log_warning() {
+  echo -e "${YELLOW}[install]${NC} $*"
+}
+
+trap 'log_error "Script failed at line $LINENO"' ERR
 
 OS="$(uname -s)"
 log "Detected OS: $OS"
@@ -28,14 +44,14 @@ if [ "$OS_TYPE" = "MSYS2" ]; then
   else
     log "Setting MSYS2_PATH_TYPE=inherit so Windows PATH is inherited..."
     setx MSYS2_PATH_TYPE inherit
-    log "MSYS2_PATH_TYPE set. Restart your terminal for it to take effect."
+    log_success "MSYS2_PATH_TYPE set. Restart your terminal for it to take effect."
   fi
   if [ "${MSYS:-}" = "winsymlinks:nativestrict" ]; then
     log "MSYS already set to winsymlinks:nativestrict, skipping."
   else
     log "Setting MSYS=winsymlinks:nativestrict so ln -s creates real Windows symlinks..."
     setx MSYS winsymlinks:nativestrict
-    log "MSYS set. Restart your terminal for it to take effect."
+    log_success "MSYS set. Restart your terminal for it to take effect."
   fi
 fi
 
@@ -44,7 +60,7 @@ if [ "$OS_TYPE" = "Linux" ]; then
   log "Installing Linux prerequisites for Homebrew..."
   sudo apt-get update -qq
   sudo apt-get install -y -qq build-essential curl file git
-  log "Linux prerequisites installed."
+  log_success "Linux prerequisites installed."
 fi
 
 # Homebrew (macOS and Linux only — not available on Windows/MSYS2)
@@ -73,7 +89,7 @@ if [ "$OS_TYPE" != "MSYS2" ]; then
     else
       eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
     fi
-    log "Homebrew installed."
+    log_success "Homebrew installed."
   fi
 fi
 
@@ -83,11 +99,11 @@ if command -v delta &>/dev/null; then
 elif [ "$OS_TYPE" = "MSYS2" ]; then
   log "Installing git-delta via pacman..."
   pacman -S --noconfirm --needed mingw-w64-ucrt-x86_64-delta
-  log "git-delta installed."
+  log_success "git-delta installed."
 else
   log "Installing git-delta via Homebrew..."
   brew install git-delta
-  log "git-delta installed."
+  log_success "git-delta installed."
 fi
 
 # GitHub CLI
@@ -96,11 +112,11 @@ if command -v gh &>/dev/null; then
 elif [ "$OS_TYPE" = "MSYS2" ]; then
   log "Installing GitHub CLI via pacman..."
   pacman -S --noconfirm --needed mingw-w64-x86_64-github-cli
-  log "GitHub CLI installed."
+  log_success "GitHub CLI installed."
 else
   log "Installing GitHub CLI via Homebrew..."
   brew install gh
-  log "GitHub CLI installed."
+  log_success "GitHub CLI installed."
 fi
 
 # JFrog CLI
@@ -111,11 +127,11 @@ elif [ "$OS_TYPE" = "MSYS2" ]; then
   mkdir -p /usr/local/bin
   curl -fsSL "https://releases.jfrog.io/artifactory/jfrog-cli/v2-jf/[RELEASE]/jfrog-cli-windows-amd64/jf.exe" \
     -o /usr/local/bin/jf.exe
-  log "JFrog CLI installed."
+  log_success "JFrog CLI installed."
 else
   log "Installing JFrog CLI via Homebrew..."
   brew install jfrog-cli
-  log "JFrog CLI installed."
+  log_success "JFrog CLI installed."
 fi
 
 # ag (the_silver_searcher)
@@ -124,11 +140,11 @@ if command -v ag &>/dev/null; then
 elif [ "$OS_TYPE" = "MSYS2" ]; then
   log "Installing ag via pacman..."
   pacman -S --noconfirm --needed mingw-w64-x86_64-ag
-  log "ag installed."
+  log_success "ag installed."
 else
   log "Installing ag via Homebrew..."
   brew install the_silver_searcher
-  log "ag installed."
+  log_success "ag installed."
 fi
 
 # circleci CLI
@@ -147,11 +163,11 @@ elif [ "$OS_TYPE" = "MSYS2" ]; then
   mkdir -p /usr/local/bin
   find "${CIRCLECI_TMP}" -name "circleci.exe" -exec cp {} /usr/local/bin/circleci \;
   rm -rf "${CIRCLECI_TMP}"
-  log "circleci CLI installed."
+  log_success "circleci CLI installed."
 else
   log "Installing circleci CLI via Homebrew..."
   brew install circleci
-  log "circleci CLI installed."
+  log_success "circleci CLI installed."
 fi
 
 # Additional MSYS2 packages
@@ -160,7 +176,7 @@ if [ "$OS_TYPE" = "MSYS2" ]; then
   pacman -S --noconfirm --needed bash-completion less perl python rsync vim
   log "Installing additional MSYS2 mingw64 packages..."
   pacman -S --noconfirm --needed mingw-w64-x86_64-jq mingw-w64-x86_64-python
-  log "Additional MSYS2 packages installed."
+  log_success "Additional MSYS2 packages installed."
 fi
 
 # oh-my-posh
@@ -169,11 +185,11 @@ if command -v oh-my-posh &>/dev/null; then
 elif [ "$OS_TYPE" = "MSYS2" ]; then
   log "Installing oh-my-posh via pacman..."
   pacman -S --noconfirm --needed mingw-w64-x86_64-oh-my-posh
-  log "oh-my-posh installed."
+  log_success "oh-my-posh installed."
 else
   log "Installing oh-my-posh via Homebrew..."
   brew install jandedobbeleer/oh-my-posh/oh-my-posh
-  log "oh-my-posh installed."
+  log_success "oh-my-posh installed."
 fi
 
 # oh-my-posh theme
@@ -189,9 +205,9 @@ log "Configuring oh-my-posh theme..."
 mkdir -p "$OMP_THEME_DIR"
 if [ -f "$OMP_THEME_SRC" ]; then
   cp "$OMP_THEME_SRC" "$OMP_THEME_DEST"
-  log "Copied custom-atomic.omp.json to $OMP_THEME_DIR."
+  log_success "Copied custom-atomic.omp.json to $OMP_THEME_DIR."
 else
-  log "WARNING: $OMP_THEME_SRC not found, skipping theme copy."
+  log_warning "WARNING: $OMP_THEME_SRC not found, skipping theme copy."
 fi
 
 # asdf (not supported on Windows/MSYS2)
@@ -201,7 +217,7 @@ if [ "$OS_TYPE" != "MSYS2" ]; then
   else
     log "Installing asdf..."
     git clone https://github.com/asdf-vm/asdf.git "$HOME/.asdf" --branch v0.15.0
-    log "asdf installed."
+    log_success "asdf installed."
   fi
   # Source asdf for the rest of this script
   # shellcheck disable=SC1091
@@ -215,20 +231,20 @@ if [ "$OS_TYPE" != "MSYS2" ]; then
       log "asdf plugin already installed, skipping: $plugin"
     else
       asdf plugin add "$plugin"
-      log "Added asdf plugin: $plugin"
+      log_success "Added asdf plugin: $plugin"
     fi
   done
 
   # asdf tool installation — default tools from dotfiles
   log "Installing default tools from dotfiles .tool-versions..."
   (cd "$SCRIPT_DIR" && asdf install)
-  log "Default tools installed."
+  log_success "Default tools installed."
 
   # Copy dotfiles .tool-versions to ~/.tool-versions as global fallback if not already present
   if [ ! -f "$HOME/.tool-versions" ]; then
     log "Copying .tool-versions to ~/.tool-versions as global default..."
     cp "$SCRIPT_DIR/.tool-versions" "$HOME/.tool-versions"
-    log "Copied .tool-versions to ~/.tool-versions."
+    log_success "Copied .tool-versions to ~/.tool-versions."
   else
     log "~/.tool-versions already exists, skipping."
   fi
@@ -237,7 +253,7 @@ if [ "$OS_TYPE" != "MSYS2" ]; then
   if [ -f ".tool-versions" ] && [ "$(pwd)" != "$SCRIPT_DIR" ]; then
     log "Found .tool-versions in workspace, running asdf install..."
     asdf install
-    log "Project tools installed."
+    log_success "Project tools installed."
   fi
 else
   log "Skipping asdf installation on MSYS2 (not supported on Windows)."
@@ -247,14 +263,14 @@ fi
 log "Configuring global .gitignore..."
 cp "$SCRIPT_DIR/.gitignore_global" "$HOME/.gitignore_global"
 git config --global core.excludesfile "$HOME/.gitignore_global"
-log "Global .gitignore configured."
+log_success "Global .gitignore configured."
 
 # SSH key — add to the platform keychain/agent so passphrase is not required on future logins
 if [ "$OS_TYPE" = "Darwin" ]; then
   if [ -f "$HOME/.ssh/id_ed25519" ]; then
     log "Adding SSH key to macOS Keychain..."
     ssh-add --apple-use-keychain "$HOME/.ssh/id_ed25519"
-    log "SSH key added to Keychain."
+    log_success "SSH key added to Keychain."
   else
     log "No ~/.ssh/id_ed25519 found, skipping Keychain ssh-add."
   fi
@@ -263,12 +279,12 @@ elif [ "$OS_TYPE" = "MSYS2" ]; then
     if sc.exe query ssh-agent 2>/dev/null | grep -q "RUNNING"; then
       log "Adding SSH key to Windows OpenSSH agent..."
       ssh-add "$HOME/.ssh/id_ed25519"
-      log "SSH key added."
+      log_success "SSH key added."
     else
-      log "WARNING: Windows OpenSSH Authentication Agent service is not running."
-      log "To enable it, run the following in PowerShell as Administrator:"
-      log "  Set-Service ssh-agent -StartupType Automatic; Start-Service ssh-agent"
-      log "Then re-run install.sh to add your SSH key."
+      log_warning "WARNING: Windows OpenSSH Authentication Agent service is not running."
+      log_warning "To enable it, run the following in PowerShell as Administrator:"
+      log_warning "  Set-Service ssh-agent -StartupType Automatic; Start-Service ssh-agent"
+      log_warning "Then re-run install.sh to add your SSH key."
     fi
   else
     log "No ~/.ssh/id_ed25519 found, skipping SSH key setup."
@@ -286,7 +302,7 @@ if [ "$OS_TYPE" = "MSYS2" ]; then
     log "HOME already set in $BASHRC, skipping."
   else
     echo "$HOME_LINE" >> "$BASHRC"
-    log "Added HOME=\$USERPROFILE to $BASHRC."
+    log_success "Added HOME=\$USERPROFILE to $BASHRC."
   fi
 fi
 
@@ -298,7 +314,7 @@ if [ "$OS_TYPE" = "MSYS2" ]; then
     log "MINGW64 PATH already in $BASHRC, skipping."
   else
     echo "$MINGW_PATH" >> "$BASHRC"
-    log "Added MINGW64 PATH to $BASHRC."
+    log_success "Added MINGW64 PATH to $BASHRC."
   fi
 fi
 
@@ -318,7 +334,7 @@ if [ "$OS_TYPE" != "MSYS2" ]; then
     log "Homebrew shellenv already in $BASHRC, skipping."
   else
     echo "$BREW_SHELLENV" >> "$BASHRC"
-    log "Added Homebrew shellenv to $BASHRC."
+    log_success "Added Homebrew shellenv to $BASHRC."
   fi
 fi
 
@@ -330,7 +346,7 @@ if [ "$OS_TYPE" != "MSYS2" ]; then
     log "asdf shell integration already in $BASHRC, skipping."
   else
     echo "$ASDF_SOURCE" >> "$BASHRC"
-    log "Added asdf shell integration to $BASHRC."
+    log_success "Added asdf shell integration to $BASHRC."
   fi
 fi
 
@@ -341,7 +357,7 @@ if grep -qxF "$OMP_INIT_LINE" "$BASHRC" 2>/dev/null; then
   log "oh-my-posh init already in $BASHRC, skipping."
 else
   echo "$OMP_INIT_LINE" >> "$BASHRC"
-  log "Added oh-my-posh init to $BASHRC."
+  log_success "Added oh-my-posh init to $BASHRC."
 fi
 
 # 6. Shell aliases
@@ -362,7 +378,7 @@ for alias_line in "${ALIASES[@]}"; do
     log "Already present, skipping: $alias_line"
   else
     echo "$alias_line" >> "$BASHRC"
-    log "Added: $alias_line"
+    log_success "Added: $alias_line"
   fi
 done
 
@@ -374,7 +390,7 @@ if [ "$OS_TYPE" != "MSYS2" ]; then
     log "Already present, skipping: $HOMEBREW_LINE"
   else
     echo "$HOMEBREW_LINE" >> "$BASHRC"
-    log "Added: $HOMEBREW_LINE"
+    log_success "Added: $HOMEBREW_LINE"
   fi
 fi
 
@@ -385,7 +401,7 @@ if grep -qxF "$FLOW_CONTROL_LINE" "$BASHRC" 2>/dev/null; then
   log "Already present, skipping: $FLOW_CONTROL_LINE"
 else
   echo "$FLOW_CONTROL_LINE" >> "$BASHRC"
-  log "Added: $FLOW_CONTROL_LINE"
+  log_success "Added: $FLOW_CONTROL_LINE"
 fi
 
 # 9. Eternal bash history
@@ -402,7 +418,7 @@ for line in "${HISTORY_LINES[@]}"; do
     log "Already present, skipping: $line"
   else
     echo "$line" >> "$BASHRC"
-    log "Added: $line"
+    log_success "Added: $line"
   fi
 done
 
@@ -426,8 +442,8 @@ if [ -z "${SSH_AGENT_PID:-}" ] || ! kill -0 "$SSH_AGENT_PID" 2>/dev/null; then
   [ -f "$HOME/.ssh/id_ed25519" ] && ssh-add "$HOME/.ssh/id_ed25519"
 fi
 EOF
-    log "Added SSH agent setup to $BASHRC."
+    log_success "Added SSH agent setup to $BASHRC."
   fi
 fi
 
-log "Done."
+log_success "Done."
