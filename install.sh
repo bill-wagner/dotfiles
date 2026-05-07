@@ -23,12 +23,20 @@ BASHRC="$HOME/.bashrc"
 
 # MSYS2: inherit full Windows PATH so Windows-installed tools (dotnet, etc.) are accessible
 if [ "$OS_TYPE" = "MSYS2" ]; then
-  log "Setting MSYS2_PATH_TYPE=inherit so Windows PATH is inherited..."
-  setx MSYS2_PATH_TYPE inherit
-  log "MSYS2_PATH_TYPE set. Restart your terminal for it to take effect."
-  log "Setting MSYS=winsymlinks:nativestrict so ln -s creates real Windows symlinks..."
-  setx MSYS winsymlinks:nativestrict
-  log "MSYS set. Restart your terminal for it to take effect."
+  if [ "${MSYS2_PATH_TYPE:-}" = "inherit" ]; then
+    log "MSYS2_PATH_TYPE already set to inherit, skipping."
+  else
+    log "Setting MSYS2_PATH_TYPE=inherit so Windows PATH is inherited..."
+    setx MSYS2_PATH_TYPE inherit
+    log "MSYS2_PATH_TYPE set. Restart your terminal for it to take effect."
+  fi
+  if [ "${MSYS:-}" = "winsymlinks:nativestrict" ]; then
+    log "MSYS already set to winsymlinks:nativestrict, skipping."
+  else
+    log "Setting MSYS=winsymlinks:nativestrict so ln -s creates real Windows symlinks..."
+    setx MSYS winsymlinks:nativestrict
+    log "MSYS set. Restart your terminal for it to take effect."
+  fi
 fi
 
 # Linux prerequisites for Homebrew
