@@ -82,6 +82,19 @@ else
   log "git-delta installed."
 fi
 
+# GitHub CLI
+if command -v gh &>/dev/null; then
+  log "GitHub CLI already installed, skipping."
+elif [ "$OS_TYPE" = "MSYS2" ]; then
+  log "Installing GitHub CLI via pacman..."
+  pacman -S --noconfirm --needed mingw-w64-x86_64-github-cli
+  log "GitHub CLI installed."
+else
+  log "Installing GitHub CLI via Homebrew..."
+  brew install gh
+  log "GitHub CLI installed."
+fi
+
 # ag (the_silver_searcher)
 if command -v ag &>/dev/null; then
   log "ag already installed, skipping."
