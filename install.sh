@@ -125,7 +125,7 @@ if command -v jf &>/dev/null; then
 elif [ "$OS_TYPE" = "MSYS2" ]; then
   log "Installing JFrog CLI from releases.jfrog.io..."
   mkdir -p /usr/local/bin
-  curl -fsSL "https://releases.jfrog.io/artifactory/jfrog-cli/v2-jf/[RELEASE]/jfrog-cli-windows-amd64/jf.exe" \
+  curl -fsSLg "https://releases.jfrog.io/artifactory/jfrog-cli/v2-jf/[RELEASE]/jfrog-cli-windows-amd64/jf.exe" \
     -o /usr/local/bin/jf.exe
   log_success "JFrog CLI installed."
 else
