@@ -53,6 +53,14 @@ if [ "$OS_TYPE" = "MSYS2" ]; then
     setx MSYS winsymlinks:nativestrict
     log_success "MSYS set. Restart your terminal for it to take effect."
   fi
+  # Tell Claude Code CLI to use MSYS2 bash instead of Git Bash when spawning subprocesses
+  if [ "${CLAUDE_CODE_GIT_BASH_PATH:-}" = "C:/msys64/usr/bin/bash.exe" ]; then
+    log "CLAUDE_CODE_GIT_BASH_PATH already set, skipping."
+  else
+    log "Setting CLAUDE_CODE_GIT_BASH_PATH to MSYS2 bash..."
+    setx CLAUDE_CODE_GIT_BASH_PATH "C:/msys64/usr/bin/bash.exe"
+    log_success "CLAUDE_CODE_GIT_BASH_PATH set. Restart your terminal for it to take effect."
+  fi
 fi
 
 # Linux prerequisites for Homebrew
