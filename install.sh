@@ -33,7 +33,16 @@ esac
 log "OS type: $OS_TYPE"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# BASHRC must be set before the MSYS2 HOME override below, because bash reads .bashrc from
+# the MSYS2-internal home (/home/username), not from $USERPROFILE.
 BASHRC="$HOME/.bashrc"
+
+# On MSYS2, override HOME to $USERPROFILE so all subsequent file operations in this script
+# (gitignore, gitconfig, oh-my-posh theme, etc.) target the Windows user profile directory,
+# matching where $HOME points at runtime after .bashrc runs.
+if [ "$OS_TYPE" = "MSYS2" ]; then
+  HOME="$USERPROFILE"
+fi
 
 # --- Tool installation ---
 
@@ -201,12 +210,7 @@ else
 fi
 
 # oh-my-posh theme
-# On MSYS2, use $USERPROFILE so the path matches $HOME at runtime (after HOME is set to $USERPROFILE in .bashrc)
-if [ "$OS_TYPE" = "MSYS2" ]; then
-  OMP_THEME_DIR="$USERPROFILE/.oh-my-posh-custom-themes"
-else
-  OMP_THEME_DIR="$HOME/.oh-my-posh-custom-themes"
-fi
+OMP_THEME_DIR="$HOME/.oh-my-posh-custom-themes"
 OMP_THEME_SRC="$SCRIPT_DIR/custom-atomic.omp.json"
 OMP_THEME_DEST="$OMP_THEME_DIR/custom-atomic.omp.json"
 log "Configuring oh-my-posh theme..."
