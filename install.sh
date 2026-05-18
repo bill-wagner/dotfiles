@@ -197,6 +197,17 @@ if [ "$OS_TYPE" = "MSYS2" ]; then
   log_success "Additional MSYS2 packages installed."
 fi
 
+# bash-completion (provides git tab-completion and other tool completions)
+if [ "$OS_TYPE" = "MSYS2" ]; then
+  log "bash-completion already in MSYS2 package list, skipping."
+elif [ -f "$(brew --prefix)/etc/profile.d/bash_completion.sh" ]; then
+  log "bash-completion already installed, skipping."
+else
+  log "Installing bash-completion via Homebrew..."
+  brew install bash-completion@2
+  log_success "bash-completion installed."
+fi
+
 # oh-my-posh
 if command -v oh-my-posh &>/dev/null; then
   log "oh-my-posh already installed, skipping."
@@ -330,7 +341,7 @@ EOF
   done
 fi
 
-# 2. MSYS2: add /mingw64/bin to PATH so mingw64 packages (oh-my-posh, etc.) are available in all terminal types
+# 3. MSYS2: add /mingw64/bin to PATH so mingw64 packages (oh-my-posh, etc.) are available in all terminal types
 if [ "$OS_TYPE" = "MSYS2" ]; then
   MINGW_PATH='export PATH="/mingw64/bin:$PATH"'
   log "Configuring MINGW64 PATH in $BASHRC..."
@@ -342,7 +353,7 @@ if [ "$OS_TYPE" = "MSYS2" ]; then
   fi
 fi
 
-# 3. Homebrew shell environment (sets PATH so Homebrew tools are available; not applicable on MSYS2)
+# 4. Homebrew shell environment (sets PATH so Homebrew tools are available; not applicable on MSYS2)
 if [ "$OS_TYPE" != "MSYS2" ]; then
   if [ "$OS_TYPE" = "Darwin" ]; then
     if [ -x "/opt/homebrew/bin/brew" ]; then
@@ -362,7 +373,21 @@ if [ "$OS_TYPE" != "MSYS2" ]; then
   fi
 fi
 
-# 4. asdf shell integration (sets PATH so asdf-managed tools are available; not applicable on MSYS2)
+# 5. bash-completion (git tab-completion and other completions; must come after Homebrew shellenv)
+log "Configuring bash-completion in $BASHRC..."
+if [ "$OS_TYPE" = "MSYS2" ]; then
+  BASH_COMPLETION_LINE='[[ -r /usr/share/bash-completion/bash_completion ]] && . /usr/share/bash-completion/bash_completion'
+else
+  BASH_COMPLETION_LINE='[[ -r "$(brew --prefix)/etc/profile.d/bash_completion.sh" ]] && . "$(brew --prefix)/etc/profile.d/bash_completion.sh"'
+fi
+if grep -qF "bash_completion" "$BASHRC" 2>/dev/null; then
+  log "bash-completion already in $BASHRC, skipping."
+else
+  echo "$BASH_COMPLETION_LINE" >> "$BASHRC"
+  log_success "Added bash-completion to $BASHRC."
+fi
+
+# 6. asdf shell integration (sets PATH so asdf-managed tools are available; not applicable on MSYS2)
 if [ "$OS_TYPE" != "MSYS2" ]; then
   ASDF_SOURCE='. "$HOME/.asdf/asdf.sh"'
   log "Configuring asdf shell integration in $BASHRC..."
@@ -374,7 +399,7 @@ if [ "$OS_TYPE" != "MSYS2" ]; then
   fi
 fi
 
-# 5. oh-my-posh init (requires Homebrew to be on PATH on macOS/Linux)
+# 7. oh-my-posh init (requires Homebrew to be on PATH on macOS/Linux)
 OMP_INIT_LINE='eval "$(oh-my-posh init bash --config $HOME/.oh-my-posh-custom-themes/custom-atomic.omp.json)"'
 log "Configuring oh-my-posh init in $BASHRC..."
 if grep -qxF "$OMP_INIT_LINE" "$BASHRC" 2>/dev/null; then
@@ -384,7 +409,7 @@ else
   log_success "Added oh-my-posh init to $BASHRC."
 fi
 
-# 6. Shell aliases
+# 8. Shell aliases
 if [ "$OS_TYPE" = "Darwin" ]; then
   LS_ALIAS="alias ls='ls -G'"
 else
@@ -406,7 +431,7 @@ for alias_line in "${ALIASES[@]}"; do
   fi
 done
 
-# 7. Homebrew analytics opt-out (not applicable on MSYS2)
+# 9. Homebrew analytics opt-out (not applicable on MSYS2)
 if [ "$OS_TYPE" != "MSYS2" ]; then
   HOMEBREW_LINE="export HOMEBREW_NO_ANALYTICS=1"
   log "Configuring Homebrew analytics opt-out in $BASHRC..."
@@ -418,7 +443,7 @@ if [ "$OS_TYPE" != "MSYS2" ]; then
   fi
 fi
 
-# 8. Disable terminal flow control (enables CTRL+S for forward history search)
+# 10. Disable terminal flow control (enables CTRL+S for forward history search)
 FLOW_CONTROL_LINE="stty -ixon"
 log "Configuring terminal flow control in $BASHRC..."
 if grep -qxF "$FLOW_CONTROL_LINE" "$BASHRC" 2>/dev/null; then
@@ -428,7 +453,7 @@ else
   log_success "Added: $FLOW_CONTROL_LINE"
 fi
 
-# 9. Eternal bash history
+# 11. Eternal bash history
 HISTORY_LINES=(
   "export HISTFILESIZE=999999"
   "export HISTSIZE=999999"
@@ -446,7 +471,7 @@ for line in "${HISTORY_LINES[@]}"; do
   fi
 done
 
-# 10. SSH agent (MSYS2 only — macOS uses Keychain, Linux typically has a system agent)
+# 12. SSH agent (MSYS2 only — macOS uses Keychain, Linux typically has a system agent)
 # Reuses an existing agent across terminal windows; starts a new one (prompting for passphrase once) if needed.
 if [ "$OS_TYPE" = "MSYS2" ]; then
   log "Configuring SSH agent setup in $BASHRC..."
