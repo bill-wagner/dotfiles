@@ -26,9 +26,9 @@ log "Detected OS: $OS"
 
 # Normalize to a three-way OS type: Darwin, Linux, or MSYS2
 case "$OS" in
-  MSYS_NT*|MINGW*) OS_TYPE="MSYS2" ;;
-  Darwin)                   OS_TYPE="Darwin" ;;
-  *)                        OS_TYPE="Linux" ;;
+  MSYS_NT*|MINGW*) OS_TYPE="MSYS2"   ;;
+  Darwin)          OS_TYPE="Darwin"  ;;
+  *)               OS_TYPE="Linux"   ;;
 esac
 log "OS type: $OS_TYPE"
 
