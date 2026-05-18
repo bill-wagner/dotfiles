@@ -33,16 +33,18 @@ esac
 log "OS type: $OS_TYPE"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# BASHRC must be set before the MSYS2 HOME override below, because bash reads .bashrc from
-# the MSYS2-internal home (/home/username), not from $USERPROFILE.
-BASHRC="$HOME/.bashrc"
-MSYS2_INTERNAL_HOME="$HOME"
 
-# On MSYS2, override HOME to $USERPROFILE so all subsequent file operations in this script
-# (gitignore, gitconfig, oh-my-posh theme, etc.) target the Windows user profile directory,
-# matching where $HOME points at runtime after .bashrc runs.
 if [ "$OS_TYPE" = "MSYS2" ]; then
+  # Derive MSYS2 internal home from USERPROFILE. We cannot rely on $HOME here because the
+  # script may be run from an already-initialized MSYS2 session where .bashrc has already
+  # overridden HOME to $USERPROFILE. Strip everything up to the last backslash to get the
+  # username (e.g. C:\Users\bill.wagner -> bill.wagner).
+  MSYS2_INTERNAL_HOME="/home/${USERPROFILE##*\\}"
+  BASHRC="$MSYS2_INTERNAL_HOME/.bashrc"
   HOME="$USERPROFILE"
+else
+  MSYS2_INTERNAL_HOME="$HOME"
+  BASHRC="$HOME/.bashrc"
 fi
 
 # --- Tool installation ---
