@@ -1,22 +1,22 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-GREEN='\033[0;32m'
-RED='\033[0;31m'
-YELLOW='\033[0;33m'
-NC='\033[0m'
+GREEN=$'\033[0;32m'
+RED=$'\033[0;31m'
+YELLOW=$'\033[0;33m'
+NC=$'\033[0m'
 
 log() {
   echo "[install] $*"
 }
 log_success() {
-  echo -e "${GREEN}[install]${NC} $*"
+  echo "${GREEN}[install]${NC} $*"
 }
 log_error() {
-  echo -e "${RED}[install]${NC} $*" >&2
+  echo "${RED}[install]${NC} $*" >&2
 }
 log_warning() {
-  echo -e "${YELLOW}[install]${NC} $*"
+  echo "${YELLOW}[install]${NC} $*"
 }
 
 trap 'log_error "Script failed at line $LINENO"' ERR
@@ -387,19 +387,6 @@ else
   log_success "Added bash-completion to $BASHRC."
 fi
 
-# MSYS2: source git-completion.bash from Git for Windows (MSYS2's own git is not used, so its
-# completion file is not installed; Git for Windows ships its own copy)
-if [ "$OS_TYPE" = "MSYS2" ]; then
-  GIT_COMPLETION_LINE='[[ -r "/c/Program Files/Git/mingw64/share/git/completion/git-completion.bash" ]] && . "/c/Program Files/Git/mingw64/share/git/completion/git-completion.bash"'
-  log "Configuring Git for Windows completion in $BASHRC..."
-  if grep -qF "git-completion.bash" "$BASHRC" 2>/dev/null; then
-    log "Git completion already in $BASHRC, skipping."
-  else
-    echo "$GIT_COMPLETION_LINE" >> "$BASHRC"
-    log_success "Added Git for Windows completion to $BASHRC."
-  fi
-fi
-
 # 6. asdf shell integration (sets PATH so asdf-managed tools are available; not applicable on MSYS2)
 if [ "$OS_TYPE" != "MSYS2" ]; then
   ASDF_SOURCE='. "$HOME/.asdf/asdf.sh"'
@@ -506,6 +493,16 @@ fi
 EOF
     log_success "Added SSH agent setup to $BASHRC."
   fi
+fi
+
+# 13. MSYS2: git-completion from Git for Windows — must be last so bash-completion cannot overwrite it
+if [ "$OS_TYPE" = "MSYS2" ]; then
+  GIT_COMPLETION_LINE='[[ -r "/c/Program Files/Git/mingw64/share/git/completion/git-completion.bash" ]] && . "/c/Program Files/Git/mingw64/share/git/completion/git-completion.bash"'
+  log "Configuring Git for Windows completion in $BASHRC (at end to prevent overwrite)..."
+  # Always remove any existing line and re-append so it stays at the end
+  sed -i '/git-completion\.bash/d' "$BASHRC"
+  echo "$GIT_COMPLETION_LINE" >> "$BASHRC"
+  log_success "Added Git for Windows completion to $BASHRC."
 fi
 
 log_success "Done."
