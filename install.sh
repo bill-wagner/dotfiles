@@ -36,6 +36,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # BASHRC must be set before the MSYS2 HOME override below, because bash reads .bashrc from
 # the MSYS2-internal home (/home/username), not from $USERPROFILE.
 BASHRC="$HOME/.bashrc"
+MSYS2_INTERNAL_HOME="$HOME"
 
 # On MSYS2, override HOME to $USERPROFILE so all subsequent file operations in this script
 # (gitignore, gitconfig, oh-my-posh theme, etc.) target the Windows user profile directory,
@@ -301,6 +302,32 @@ if [ "$OS_TYPE" = "MSYS2" ]; then
     echo "$HOME_LINE" >> "$BASHRC"
     log_success "Added HOME=\$USERPROFILE to $BASHRC."
   fi
+fi
+
+# 2. MSYS2: write a runtime warning into $USERPROFILE/.bashrc and .bash_profile.
+# These files are NOT auto-sourced by MSYS2 at startup; they only become reachable via
+# 'source ~/.bashrc' after $HOME is changed to $USERPROFILE mid-session — a subtle footgun.
+# The warning detects MSYS2 at source-time and prints a reminder to the user.
+if [ "$OS_TYPE" = "MSYS2" ]; then
+  for warn_file in "$HOME/.bashrc" "$HOME/.bash_profile"; do
+    if grep -qF "MSYS2 footgun warning" "$warn_file" 2>/dev/null; then
+      log "MSYS2 sourcing warning already in $warn_file, skipping."
+    else
+      log "Adding MSYS2 sourcing warning to $warn_file..."
+      cat >> "$warn_file" << EOF
+
+# MSYS2 footgun warning — added by https://github.com/bill-wagner/dotfiles/blob/master/install.sh
+# This file is NOT automatically sourced by MSYS2 at startup.
+if uname -s 2>/dev/null | grep -qE '(MSYS|MINGW)'; then
+  echo "WARNING: You are in an MSYS2 session and have sourced a file from your Windows" >&2
+  echo "user profile. This file is NOT automatically sourced by MSYS2 at startup." >&2
+  echo "MSYS2 reads shell config from: $MSYS2_INTERNAL_HOME/.bashrc" >&2
+  echo "To reload your MSYS2 shell config, run: source $MSYS2_INTERNAL_HOME/.bashrc" >&2
+fi
+EOF
+      log_success "Added MSYS2 sourcing warning to $warn_file."
+    fi
+  done
 fi
 
 # 2. MSYS2: add /mingw64/bin to PATH so mingw64 packages (oh-my-posh, etc.) are available in all terminal types
