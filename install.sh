@@ -291,6 +291,25 @@ cp "$SCRIPT_DIR/.gitignore_global" "$HOME/.gitignore_global"
 git config --global core.excludesfile "$HOME/.gitignore_global"
 log_success "Global .gitignore configured."
 
+# git-delta configuration
+log "Configuring git to use delta..."
+git config --global core.pager "delta"
+git config --global interactive.diffFilter "delta --color-only --features=interactive"
+git config --global delta.navigate "true"
+git config --global delta.features "decorations"
+git config --global delta.side-by-side "true"
+git config --global delta.interactive.keep-plus-minus-markers "false"
+git config --global delta.decorations.commit-decoration-style "blue ol"
+git config --global delta.decorations.commit-style "raw"
+git config --global delta.decorations.file-style "omit"
+git config --global delta.decorations.hunk-header-decoration-style "blue box"
+git config --global delta.decorations.hunk-header-file-style "red"
+git config --global delta.decorations.hunk-header-line-number-style "#067a00"
+git config --global delta.decorations.hunk-header-style "file line-number syntax"
+git config --global merge.conflictstyle "diff3"
+git config --global diff.colorMoved "default"
+log_success "git-delta configured."
+
 # SSH key — add to the platform keychain/agent so passphrase is not required on future logins
 if [ "$OS_TYPE" = "Darwin" ]; then
   if [ -f "$HOME/.ssh/id_ed25519" ]; then
