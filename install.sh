@@ -387,6 +387,19 @@ else
   log_success "Added bash-completion to $BASHRC."
 fi
 
+# MSYS2: source git-completion.bash from Git for Windows (MSYS2's own git is not used, so its
+# completion file is not installed; Git for Windows ships its own copy)
+if [ "$OS_TYPE" = "MSYS2" ]; then
+  GIT_COMPLETION_LINE='[[ -r "/c/Program Files/Git/mingw64/share/git/completion/git-completion.bash" ]] && . "/c/Program Files/Git/mingw64/share/git/completion/git-completion.bash"'
+  log "Configuring Git for Windows completion in $BASHRC..."
+  if grep -qF "git-completion.bash" "$BASHRC" 2>/dev/null; then
+    log "Git completion already in $BASHRC, skipping."
+  else
+    echo "$GIT_COMPLETION_LINE" >> "$BASHRC"
+    log_success "Added Git for Windows completion to $BASHRC."
+  fi
+fi
+
 # 6. asdf shell integration (sets PATH so asdf-managed tools are available; not applicable on MSYS2)
 if [ "$OS_TYPE" != "MSYS2" ]; then
   ASDF_SOURCE='. "$HOME/.asdf/asdf.sh"'
