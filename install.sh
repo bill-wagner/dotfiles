@@ -362,15 +362,17 @@ EOF
   done
 fi
 
-# 3. MSYS2: add /mingw64/bin to PATH so mingw64 packages (oh-my-posh, etc.) are available in all terminal types
+# 3. MSYS2: add /mingw64/bin and /ucrt64/bin to PATH so mingw64/ucrt64 packages are available in all terminal types
 if [ "$OS_TYPE" = "MSYS2" ]; then
-  MINGW_PATH='export PATH="/mingw64/bin:$PATH"'
-  log "Configuring MINGW64 PATH in $BASHRC..."
+  MINGW_PATH='export PATH="/mingw64/bin:/ucrt64/bin:$PATH"'
+  log "Configuring MINGW64/UCRT64 PATH in $BASHRC..."
   if grep -qxF "$MINGW_PATH" "$BASHRC" 2>/dev/null; then
-    log "MINGW64 PATH already in $BASHRC, skipping."
+    log "MINGW64/UCRT64 PATH already in $BASHRC, skipping."
   else
+    # Remove any old mingw64-only PATH line before appending the updated one
+    sed -i '/export PATH="\/mingw64\/bin/d' "$BASHRC"
     echo "$MINGW_PATH" >> "$BASHRC"
-    log_success "Added MINGW64 PATH to $BASHRC."
+    log_success "Added MINGW64/UCRT64 PATH to $BASHRC."
   fi
 fi
 
