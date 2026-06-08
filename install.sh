@@ -245,9 +245,7 @@ if [ "$OS_TYPE" = "MSYS2" ]; then
   if command -v psql &>/dev/null; then
     log "postgres already available, skipping."
   else
-    log_action \
-      "PostgreSQL not found. Install it from https://www.postgresql.org/download/windows/," \
-      "then re-run this script. (install.sh is idempotent — safe to run again.)"
+    log_action "PostgreSQL not found. Install it from https://www.postgresql.org/download/windows/"
   fi
 fi
 
