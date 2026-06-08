@@ -4,6 +4,7 @@ set -euo pipefail
 GREEN=$'\033[0;32m'
 RED=$'\033[0;31m'
 YELLOW=$'\033[0;33m'
+BOLD=$'\033[1m'
 NC=$'\033[0m'
 
 log() {
@@ -17,6 +18,14 @@ log_error() {
 }
 log_warning() {
   echo "${YELLOW}[install]${NC} $*"
+}
+log_action() {
+  echo ""
+  echo "${YELLOW}${BOLD}[install] !! ACTION REQUIRED !!${NC}"
+  for msg in "$@"; do
+    echo "${YELLOW}${BOLD}[install]${NC} $msg"
+  done
+  echo ""
 }
 
 trap 'log_error "Script failed at line $LINENO"' ERR
@@ -210,8 +219,9 @@ if [ "$OS_TYPE" = "MSYS2" ]; then
   if command -v node &>/dev/null; then
     log "nodejs already available ($(node --version)), skipping."
   else
-    log_warning "nodejs not found. Install the native Windows Node.js from https://nodejs.org,"
-    log_warning "then re-run this script. (install.sh is idempotent — safe to run again.)"
+    log_action \
+      "nodejs not found. Install the native Windows Node.js from https://nodejs.org," \
+      "then re-run this script. (install.sh is idempotent — safe to run again.)"
   fi
 fi
 
@@ -220,8 +230,9 @@ if [ "$OS_TYPE" = "MSYS2" ]; then
   if command -v yarn &>/dev/null; then
     log "yarn already installed, skipping."
   elif ! command -v node &>/dev/null; then
-    log_warning "yarn requires nodejs. Install Node.js from https://nodejs.org first,"
-    log_warning "then re-run this script to install yarn. (install.sh is idempotent — safe to run again.)"
+    log_action \
+      "yarn requires nodejs. Install Node.js from https://nodejs.org first," \
+      "then re-run this script to install yarn. (install.sh is idempotent — safe to run again.)"
   else
     log "Installing yarn via npm..."
     npm install -g yarn
@@ -234,8 +245,9 @@ if [ "$OS_TYPE" = "MSYS2" ]; then
   if command -v psql &>/dev/null; then
     log "postgres already available, skipping."
   else
-    log_warning "PostgreSQL not found. Install it from https://www.postgresql.org/download/windows/,"
-    log_warning "then re-run this script. (install.sh is idempotent — safe to run again.)"
+    log_action \
+      "PostgreSQL not found. Install it from https://www.postgresql.org/download/windows/," \
+      "then re-run this script. (install.sh is idempotent — safe to run again.)"
   fi
 fi
 
