@@ -27,15 +27,22 @@ The script is split into two phases:
 6. JFrog CLI (`jf`) — downloaded from releases.jfrog.io on MSYS2, Homebrew otherwise
 7. ag (the_silver_searcher) — via pacman on MSYS2, Homebrew otherwise
 8. circleci CLI — downloaded from GitHub releases on MSYS2, Homebrew otherwise
-9. Additional MSYS2 packages — `bash-completion`, `less`, `perl`, `python`, `rsync`, `vim`, `jq` (MSYS2 only)
-10. bash-completion — via Homebrew (macOS/Linux only; already included in MSYS2 step above)
-11. oh-my-posh — via pacman on MSYS2, Homebrew otherwise
-12. oh-my-posh theme — copies `custom-atomic.omp.json` from the repo to `~/.oh-my-posh-custom-themes/`
-13. asdf via git clone, pinned to v0.15.0 (last bash-based version); skipped on MSYS2
-14. asdf plugins and tool versions — installs from the repo's `.tool-versions`, copies it to `~/.tool-versions` as global fallback, then installs project-specific tools if a `.tool-versions` exists in the working directory (macOS/Linux only)
-15. Global `.gitignore` — copies `.gitignore_global` to `~/.gitignore_global` and registers it via `git config --global core.excludesfile`
-16. git-delta global config — sets `core.pager`, `interactive.diffFilter`, and `delta.*` options via `git config --global`
-17. SSH key → macOS Keychain via `ssh-add --apple-use-keychain` (macOS only)
+9. Additional MSYS2 packages — `bash-completion`, `less`, `perl`, `python`, `rsync`, `vim`, `jq`, `ruby`, `go`, `sqlite3` (MSYS2 only)
+10. MSYS2 tool equivalents for asdf-managed tools (MSYS2 only):
+    - nodejs — warns to install the native Windows Node.js from nodejs.org (native installer preferred over pacman for addon compatibility and non-MSYS2 tool access); re-run after installing
+    - yarn — `npm install -g yarn` if nodejs is present; warns to install nodejs first + re-run if not
+    - postgres — warns to install from postgresql.org/download/windows; re-run after installing
+    - kubectl — downloaded directly from dl.k8s.io (latest stable)
+    - helm — downloaded from get.helm.sh (latest release)
+    - python, ruby, go, sqlite — covered by pacman in step 9 (not version-pinned, unlike asdf)
+11. bash-completion — via Homebrew (macOS/Linux only; already included in MSYS2 step above)
+12. oh-my-posh — via pacman on MSYS2, Homebrew otherwise
+13. oh-my-posh theme — copies `custom-atomic.omp.json` from the repo to `~/.oh-my-posh-custom-themes/`
+14. asdf via git clone, pinned to v0.15.0 (last bash-based version); skipped on MSYS2
+15. asdf plugins and tool versions — installs from the repo's `.tool-versions` (nodejs, python, ruby, sqlite, yarn, postgres, kubectl, golang, helm), copies it to `~/.tool-versions` as global fallback, then installs project-specific tools if a `.tool-versions` exists in the working directory (macOS/Linux only)
+16. Global `.gitignore` — copies `.gitignore_global` to `~/.gitignore_global` and registers it via `git config --global core.excludesfile`
+17. git-delta global config — sets `core.pager`, `interactive.diffFilter`, and `delta.*` options via `git config --global`
+18. SSH key → macOS Keychain via `ssh-add --apple-use-keychain` (macOS only)
 
 **`.bashrc` configuration** (appended in this order, which matters):
 1. MSYS2: `export HOME="$USERPROFILE"` so Windows-native tools find config in the right place

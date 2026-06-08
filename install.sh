@@ -195,8 +195,84 @@ if [ "$OS_TYPE" = "MSYS2" ]; then
   log "Installing additional MSYS2 base packages..."
   pacman -S --noconfirm --needed bash-completion less perl python rsync vim
   log "Installing additional MSYS2 mingw64 packages..."
-  pacman -S --noconfirm --needed mingw-w64-x86_64-jq mingw-w64-x86_64-python
+  pacman -S --noconfirm --needed \
+    mingw-w64-x86_64-jq \
+    mingw-w64-x86_64-python \
+    mingw-w64-x86_64-ruby \
+    mingw-w64-x86_64-go \
+    mingw-w64-x86_64-sqlite3
   log_success "Additional MSYS2 packages installed."
+fi
+
+# nodejs (MSYS2 — macOS/Linux uses asdf; native Windows installer preferred over pacman for
+# compatibility with native addons and non-MSYS2 tools like VS Code)
+if [ "$OS_TYPE" = "MSYS2" ]; then
+  if command -v node &>/dev/null; then
+    log "nodejs already available ($(node --version)), skipping."
+  else
+    log_warning "nodejs not found. Install the native Windows Node.js from https://nodejs.org,"
+    log_warning "then re-run this script. (install.sh is idempotent — safe to run again.)"
+  fi
+fi
+
+# yarn (MSYS2 — macOS/Linux uses asdf)
+if [ "$OS_TYPE" = "MSYS2" ]; then
+  if command -v yarn &>/dev/null; then
+    log "yarn already installed, skipping."
+  elif ! command -v node &>/dev/null; then
+    log_warning "yarn requires nodejs. Install Node.js from https://nodejs.org first,"
+    log_warning "then re-run this script to install yarn. (install.sh is idempotent — safe to run again.)"
+  else
+    log "Installing yarn via npm..."
+    npm install -g yarn
+    log_success "yarn installed."
+  fi
+fi
+
+# postgres (MSYS2 — macOS/Linux uses asdf; native Windows installer recommended)
+if [ "$OS_TYPE" = "MSYS2" ]; then
+  if command -v psql &>/dev/null; then
+    log "postgres already available, skipping."
+  else
+    log_warning "PostgreSQL not found. Install it from https://www.postgresql.org/download/windows/,"
+    log_warning "then re-run this script. (install.sh is idempotent — safe to run again.)"
+  fi
+fi
+
+# kubectl (MSYS2 — macOS/Linux uses asdf)
+if [ "$OS_TYPE" = "MSYS2" ]; then
+  if command -v kubectl &>/dev/null; then
+    log "kubectl already installed, skipping."
+  else
+    log "Installing kubectl from Kubernetes releases..."
+    KUBECTL_VERSION="$(curl -fsSL https://dl.k8s.io/release/stable.txt)"
+    log "Latest kubectl version: ${KUBECTL_VERSION}"
+    mkdir -p /usr/local/bin
+    curl -fsSL "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/windows/amd64/kubectl.exe" \
+      -o /usr/local/bin/kubectl.exe
+    log_success "kubectl installed."
+  fi
+fi
+
+# helm (MSYS2 — macOS/Linux uses asdf)
+if [ "$OS_TYPE" = "MSYS2" ]; then
+  if command -v helm &>/dev/null; then
+    log "helm already installed, skipping."
+  else
+    log "Installing helm from GitHub releases..."
+    HELM_VERSION="$(curl -fsSL https://api.github.com/repos/helm/helm/releases/latest \
+      | grep '"tag_name"' | sed 's/.*"v\([^"]*\)".*/\1/')"
+    log "Latest helm version: ${HELM_VERSION}"
+    HELM_TMP="$(mktemp -d)"
+    curl -fsSL "https://get.helm.sh/helm-v${HELM_VERSION}-windows-amd64.zip" \
+      -o "${HELM_TMP}/helm.zip"
+    pacman -S --noconfirm --needed unzip
+    unzip -o "${HELM_TMP}/helm.zip" -d "${HELM_TMP}"
+    mkdir -p /usr/local/bin
+    find "${HELM_TMP}" -name "helm.exe" -exec cp {} /usr/local/bin/helm.exe \;
+    rm -rf "${HELM_TMP}"
+    log_success "helm installed."
+  fi
 fi
 
 # bash-completion (provides git tab-completion and other tool completions)
@@ -250,7 +326,7 @@ if [ "$OS_TYPE" != "MSYS2" ]; then
   . "$HOME/.asdf/asdf.sh"
 
   # asdf plugins
-  ASDF_PLUGINS=(nodejs python ruby sqlite yarn postgres kubectl elixir golang helm)
+  ASDF_PLUGINS=(nodejs python ruby sqlite yarn postgres kubectl golang helm)
   log "Installing asdf plugins..."
   for plugin in "${ASDF_PLUGINS[@]}"; do
     if asdf plugin list | grep -q "^${plugin}$"; then
