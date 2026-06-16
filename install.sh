@@ -303,6 +303,11 @@ elif [ "$OS_TYPE" = "MSYS2" ]; then
   log "Installing oh-my-posh via pacman..."
   pacman -S --noconfirm --needed mingw-w64-x86_64-oh-my-posh
   log_success "oh-my-posh installed."
+elif [ "$OS_TYPE" = "Linux" ]; then
+  log "Installing oh-my-posh via official installer..."
+  mkdir -p "$HOME/.local/bin"
+  curl -s https://ohmyposh.dev/install.sh | bash -s -- -d "$HOME/.local/bin"
+  log_success "oh-my-posh installed."
 else
   log "Installing oh-my-posh via Homebrew..."
   brew install jandedobbeleer/oh-my-posh/oh-my-posh
