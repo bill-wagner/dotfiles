@@ -534,6 +534,7 @@ ALIASES=(
   "$LS_ALIAS"
   "alias ll='ls -l'"
   "alias l='ls -CF'"
+  "alias claude='claude --permission-mode auto'"
 )
 log "Configuring shell aliases in $BASHRC..."
 for alias_line in "${ALIASES[@]}"; do
