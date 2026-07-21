@@ -1,6 +1,5 @@
 ruby 3.3.9
 nodejs 20.11.1
-postgres 15.14
 yarn 1.22.16
 kubectl 1.23.3
 sqlite 3.37.0

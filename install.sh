@@ -255,7 +255,7 @@ if [ "$OS_TYPE" = "MSYS2" ]; then
   fi
 fi
 
-# postgres (MSYS2 — macOS/Linux uses asdf; native Windows installer recommended)
+# postgres (MSYS2 only — not asdf-managed on any platform; native installer recommended everywhere)
 if [ "$OS_TYPE" = "MSYS2" ]; then
   if command -v psql &>/dev/null; then
     log "postgres already available, skipping."
@@ -343,7 +343,7 @@ else
 fi
 
 # asdf (not supported on Windows/MSYS2) — clone + plugin setup only. The tool builds themselves
-# (asdf install, below the .bashrc configuration section) can fail — e.g. postgres compiling from
+# (asdf install, below the .bashrc configuration section) can fail — e.g. a tool compiling from
 # source — so they run after shell setup, not before it.
 if [ "$OS_TYPE" != "MSYS2" ]; then
   if [ -d "$HOME/.asdf" ]; then
@@ -358,7 +358,7 @@ if [ "$OS_TYPE" != "MSYS2" ]; then
   . "$HOME/.asdf/asdf.sh"
 
   # asdf plugins
-  ASDF_PLUGINS=(nodejs python ruby sqlite yarn postgres kubectl golang helm)
+  ASDF_PLUGINS=(nodejs python ruby sqlite yarn kubectl golang helm)
   log "Installing asdf plugins..."
   for plugin in "${ASDF_PLUGINS[@]}"; do
     if asdf plugin list | grep -q "^${plugin}$"; then
@@ -374,7 +374,7 @@ fi
 
 # --- .bashrc configuration ---
 # Placed before `asdf install` (further below) on purpose: that step can fail partway through
-# (e.g. postgres compiling from source), and this section must still run so a failed install
+# (e.g. a tool compiling from source), and this section must still run so a failed install
 # leaves a working shell (oh-my-posh, aliases, PATH, etc.) instead of none at all.
 # Order matters: PATH setup (Homebrew, asdf, MSYS2 mingw64) must come before anything that uses those tools (oh-my-posh).
 
@@ -606,7 +606,7 @@ if [ "$OS_TYPE" = "MSYS2" ]; then
 fi
 
 # asdf tool installation (run after .bashrc configuration above so a build failure here — e.g.
-# postgres compiling from source — cannot prevent shell setup like oh-my-posh from being applied)
+# a tool compiling from source — cannot prevent shell setup like oh-my-posh from being applied)
 if [ "$OS_TYPE" != "MSYS2" ]; then
   log "Installing default tools from dotfiles .tool-versions..."
   (cd "$SCRIPT_DIR" && asdf install)
