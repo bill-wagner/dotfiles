@@ -48,23 +48,37 @@ from source) — so a failure there still leaves a working shell.
 13. oh-my-posh theme — copies `custom-atomic.omp.json` from the repo to `~/.oh-my-posh-custom-themes/`
 14. asdf via git clone, pinned to v0.15.0 (last bash-based version), plus asdf plugin registration (nodejs, python, ruby, sqlite, yarn, kubectl, golang, helm); skipped on MSYS2. Note: this only registers plugins — it does not install tool versions yet (see part 2)
 
-**`.bashrc` configuration** (appended in this order, which matters):
+**`.bashrc` configuration** (appended in this order, which matters). Claude Code on Windows runs
+its Bash tool through a non-interactive MSYS2 bash that still sources this file on every
+invocation, so steps 1-3 (needed for that non-interactive case) run unconditionally, then an
+interactive-shell guard skips everything else — which requires a TTY or is otherwise only useful
+in a terminal — for non-interactive shells:
 1. MSYS2: `export HOME="$USERPROFILE"` so Windows-native tools find config in the right place
-2. Install-failure warning — checks for `~/.dotfiles-install-failed` and warns on stderr if a previous run failed (all platforms)
-3. MSYS2: sourcing warning written to `$USERPROFILE/.bashrc` and `.bash_profile` (those files are not auto-sourced by MSYS2)
-4. MSYS2: `/mingw64/bin:/ucrt64/bin` prepended to PATH
-5. Homebrew `shellenv` (PATH setup; macOS/Linux only)
-6. bash-completion (sources the bash_completion script; path differs by OS)
-7. asdf shell integration (PATH setup; macOS/Linux only)
-8. oh-my-posh init — must come after Homebrew/asdf are on PATH
-9. Shell aliases (`ls`, `ll`, `l`, `grep`)
-10. `HOMEBREW_NO_ANALYTICS=1` (macOS/Linux only)
-11. `stty -ixon` (flow control, enables CTRL+S forward history search)
-12. Eternal bash history settings
-13. MSYS2: SSH agent setup — reuses existing agent across terminal windows, starts a new one if needed
-14. MSYS2: git-completion from Git for Windows — appended last so bash-completion cannot overwrite it
+2. MSYS2: `/mingw64/bin:/ucrt64/bin` prepended to PATH
+3. MSYS2: SSH agent setup — reuses existing agent across terminal windows, starts a new one if needed; must come before the guard so non-interactive tools (e.g. Claude Code's git operations) can use SSH
+4. Interactive-shell guard — `[[ $- == *i* ]] || return`; everything below is skipped for non-interactive invocations
+5. Install-failure warning — checks for `~/.dotfiles-install-failed` and warns on stderr if a previous run failed (all platforms)
+6. MSYS2: sourcing warning written to `$USERPROFILE/.bashrc` and `.bash_profile` (those files are not auto-sourced by MSYS2)
+7. Homebrew `shellenv` (PATH setup; macOS/Linux only)
+8. bash-completion (sources the bash_completion script; path differs by OS)
+9. asdf shell integration (PATH setup; macOS/Linux only)
+10. oh-my-posh init — must come after Homebrew/asdf are on PATH
+11. Shell aliases (`ls`, `ll`, `l`, `grep`)
+12. `HOMEBREW_NO_ANALYTICS=1` (macOS/Linux only)
+13. `stty -ixon` (flow control, enables CTRL+S forward history search)
+14. Eternal bash history settings
+15. MSYS2: git-completion from Git for Windows — appended last so bash-completion cannot overwrite it
 
 All `.bashrc` additions use `grep -xF` (exact whole-line match) to avoid matching commented-out example lines in the default `.bashrc`.
+
+Because steps 1-4 land ahead of everything else, and appends are idempotent by content (skipped if
+the exact line already exists), an MSYS2 install from before the guard existed would keep its old,
+pre-guard ordering forever if re-run — none of its lines are "missing" so none would move. To fix
+that, a one-time migration (MSYS2 only) detects a `$BASHRC` without the guard line, backs it up
+(`.pre-guard-fix.<timestamp>.bak`), and truncates it so the whole file regenerates in the corrected
+order. This is scoped to MSYS2 only because that's the only platform where `$BASHRC` is known to be
+entirely owned by this script; on macOS/Linux, `$BASHRC` is the user's own `~/.bashrc`, so this
+script only ever appends to it and never truncates it.
 
 **Tool installation, part 2** (in order, after `.bashrc` configuration):
 1. asdf tool installation — runs `asdf install` from the repo's `.tool-versions` (nodejs, python, ruby, sqlite, yarn, kubectl, golang, helm), copies it to `~/.tool-versions` as global fallback, then installs project-specific tools if a `.tool-versions` exists in the working directory (macOS/Linux only)

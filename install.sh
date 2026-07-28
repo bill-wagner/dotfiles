@@ -377,6 +377,30 @@ fi
 # (e.g. a tool compiling from source), and this section must still run so a failed install
 # leaves a working shell (oh-my-posh, aliases, PATH, etc.) instead of none at all.
 # Order matters: PATH setup (Homebrew, asdf, MSYS2 mingw64) must come before anything that uses those tools (oh-my-posh).
+# It also matters for a second reason: Claude Code on Windows runs its Bash tool through a
+# non-interactive MSYS2 bash that still sources this file on every invocation. HOME/PATH exports
+# and SSH agent setup must work there, so they're placed ahead of the interactive-shell guard
+# below; everything that requires a TTY or is only useful in an interactive terminal (oh-my-posh,
+# stty, aliases, history, completions, the MSYS2 footgun warning) is placed after the guard so it
+# doesn't run — and in stty's case, error — on every non-interactive tool call.
+
+# One-time migration (MSYS2 only): every step below is idempotent by content (grep -qxF before
+# appending), so existing installs that predate the interactive-shell guard already have these
+# lines — just in the old, pre-guard order. Re-running this script wouldn't relocate them, since
+# none of them are "missing". Detect that case, back up the file, and truncate it so every step
+# below regenerates it from scratch in the correct order.
+# Scoped to MSYS2 only: on macOS/Linux, $BASHRC is the user's own ~/.bashrc, which this script
+# only ever appends to and does not exclusively own — truncating it would destroy content this
+# script never wrote. On MSYS2, this file's entire content is produced by this script (confirmed
+# from a real captured copy), so wiping and regenerating it is safe.
+GUARD_LINE='[[ $- == *i* ]] || return'
+if [ "$OS_TYPE" = "MSYS2" ] && [ -f "$BASHRC" ] && ! grep -qxF "$GUARD_LINE" "$BASHRC" 2>/dev/null; then
+  BASHRC_BACKUP="$BASHRC.pre-guard-fix.$(date +%Y%m%d%H%M%S).bak"
+  log "Existing $BASHRC predates the interactive-shell guard; backing up to $BASHRC_BACKUP and regenerating."
+  cp "$BASHRC" "$BASHRC_BACKUP"
+  : > "$BASHRC"
+  log_success "Backed up and cleared $BASHRC for regeneration."
+fi
 
 # 1. MSYS2: set HOME to $USERPROFILE so Windows-native tools (Claude, etc.) find config in the right place
 if [ "$OS_TYPE" = "MSYS2" ]; then
@@ -390,9 +414,62 @@ if [ "$OS_TYPE" = "MSYS2" ]; then
   fi
 fi
 
-# 2. Warn on every new shell if a previous install.sh run failed partway through. Checked right
-# after the MSYS2 HOME override above so $HOME (and thus the marker path) matches where
-# handle_failure wrote it.
+# 2. MSYS2: add /mingw64/bin and /ucrt64/bin to PATH so mingw64/ucrt64 packages are available in all terminal types
+if [ "$OS_TYPE" = "MSYS2" ]; then
+  MINGW_PATH='export PATH="/mingw64/bin:/ucrt64/bin:$PATH"'
+  log "Configuring MINGW64/UCRT64 PATH in $BASHRC..."
+  if grep -qxF "$MINGW_PATH" "$BASHRC" 2>/dev/null; then
+    log "MINGW64/UCRT64 PATH already in $BASHRC, skipping."
+  else
+    # Remove any old mingw64-only PATH line before appending the updated one
+    sed -i '/export PATH="\/mingw64\/bin/d' "$BASHRC"
+    echo "$MINGW_PATH" >> "$BASHRC"
+    log_success "Added MINGW64/UCRT64 PATH to $BASHRC."
+  fi
+fi
+
+# 3. MSYS2: SSH agent setup (macOS uses Keychain, Linux typically has a system agent). Reuses an
+# existing agent across terminal windows; starts a new one (prompting for passphrase once) if
+# needed. Placed before the interactive-shell guard below so non-interactive tools like Claude
+# Code's Windows Bash tool can use SSH for git operations.
+if [ "$OS_TYPE" = "MSYS2" ]; then
+  log "Configuring SSH agent setup in $BASHRC..."
+  if grep -qF "SSH_ENV=" "$BASHRC" 2>/dev/null; then
+    log "SSH agent setup already in $BASHRC, skipping."
+  else
+    cat >> "$BASHRC" << 'EOF'
+# SSH agent — reuse existing agent if still running, otherwise start a new one
+SSH_ENV="$HOME/.ssh/agent.env"
+if [ -f "$SSH_ENV" ]; then
+  . "$SSH_ENV" > /dev/null
+fi
+if [ -z "${SSH_AGENT_PID:-}" ] || ! kill -0 "$SSH_AGENT_PID" 2>/dev/null; then
+  ssh-agent | sed 's/^echo/#echo/' > "$SSH_ENV"
+  chmod 600 "$SSH_ENV"
+  . "$SSH_ENV" > /dev/null
+  [ -f "$HOME/.ssh/id_ed25519" ] && ssh-add "$HOME/.ssh/id_ed25519"
+fi
+EOF
+    log_success "Added SSH agent setup to $BASHRC."
+  fi
+fi
+
+# 4. Interactive-shell guard — everything below this line is skipped for non-interactive
+# invocations (e.g. Claude Code's Windows Bash tool sourcing this file via non-interactive MSYS2
+# bash), so oh-my-posh init, stty, aliases, history, completions, and the MSYS2 footgun warning
+# below don't run (or, in stty's case, error) on every tool call.
+GUARD_LINE='[[ $- == *i* ]] || return'
+log "Configuring interactive-shell guard in $BASHRC..."
+if grep -qxF "$GUARD_LINE" "$BASHRC" 2>/dev/null; then
+  log "Interactive-shell guard already in $BASHRC, skipping."
+else
+  echo "$GUARD_LINE" >> "$BASHRC"
+  log_success "Added interactive-shell guard to $BASHRC."
+fi
+
+# 5. Warn on every new interactive shell if a previous install.sh run failed partway through.
+# Checked right after the MSYS2 HOME override above so $HOME (and thus the marker path) matches
+# where handle_failure wrote it.
 log "Configuring install-failure warning in $BASHRC..."
 if grep -qF "DOTFILES_INSTALL_FAILED_MARKER=" "$BASHRC" 2>/dev/null; then
   log "Install-failure warning already in $BASHRC, skipping."
@@ -412,7 +489,7 @@ EOF
   log_success "Added install-failure warning to $BASHRC."
 fi
 
-# 3. MSYS2: write a runtime warning into $USERPROFILE/.bashrc and .bash_profile.
+# 6. MSYS2: write a runtime warning into $USERPROFILE/.bashrc and .bash_profile.
 # These files are NOT auto-sourced by MSYS2 at startup; they only become reachable via
 # 'source ~/.bashrc' after $HOME is changed to $USERPROFILE mid-session — a subtle footgun.
 # The warning detects MSYS2 at source-time and prints a reminder to the user.
@@ -438,21 +515,7 @@ EOF
   done
 fi
 
-# 4. MSYS2: add /mingw64/bin and /ucrt64/bin to PATH so mingw64/ucrt64 packages are available in all terminal types
-if [ "$OS_TYPE" = "MSYS2" ]; then
-  MINGW_PATH='export PATH="/mingw64/bin:/ucrt64/bin:$PATH"'
-  log "Configuring MINGW64/UCRT64 PATH in $BASHRC..."
-  if grep -qxF "$MINGW_PATH" "$BASHRC" 2>/dev/null; then
-    log "MINGW64/UCRT64 PATH already in $BASHRC, skipping."
-  else
-    # Remove any old mingw64-only PATH line before appending the updated one
-    sed -i '/export PATH="\/mingw64\/bin/d' "$BASHRC"
-    echo "$MINGW_PATH" >> "$BASHRC"
-    log_success "Added MINGW64/UCRT64 PATH to $BASHRC."
-  fi
-fi
-
-# 5. Homebrew shell environment (sets PATH so Homebrew tools are available; not applicable on MSYS2)
+# 7. Homebrew shell environment (sets PATH so Homebrew tools are available; not applicable on MSYS2)
 if [ "$OS_TYPE" != "MSYS2" ]; then
   if [ "$OS_TYPE" = "Darwin" ]; then
     if [ -x "/opt/homebrew/bin/brew" ]; then
@@ -472,7 +535,7 @@ if [ "$OS_TYPE" != "MSYS2" ]; then
   fi
 fi
 
-# 6. bash-completion (git tab-completion and other completions; must come after Homebrew shellenv)
+# 8. bash-completion (git tab-completion and other completions; must come after Homebrew shellenv)
 log "Configuring bash-completion in $BASHRC..."
 if [ "$OS_TYPE" = "MSYS2" ]; then
   BASH_COMPLETION_LINE='[[ -r /usr/share/bash-completion/bash_completion ]] && . /usr/share/bash-completion/bash_completion'
@@ -486,7 +549,7 @@ else
   log_success "Added bash-completion to $BASHRC."
 fi
 
-# 7. asdf shell integration (sets PATH so asdf-managed tools are available; not applicable on MSYS2)
+# 9. asdf shell integration (sets PATH so asdf-managed tools are available; not applicable on MSYS2)
 if [ "$OS_TYPE" != "MSYS2" ]; then
   ASDF_SOURCE='. "$HOME/.asdf/asdf.sh"'
   log "Configuring asdf shell integration in $BASHRC..."
@@ -498,7 +561,7 @@ if [ "$OS_TYPE" != "MSYS2" ]; then
   fi
 fi
 
-# 8. oh-my-posh init (requires Homebrew to be on PATH on macOS/Linux)
+# 10. oh-my-posh init (requires Homebrew to be on PATH on macOS/Linux)
 OMP_INIT_LINE='eval "$(oh-my-posh init bash --config $HOME/.oh-my-posh-custom-themes/custom-atomic.omp.json)"'
 log "Configuring oh-my-posh init in $BASHRC..."
 if grep -qxF "$OMP_INIT_LINE" "$BASHRC" 2>/dev/null; then
@@ -508,7 +571,7 @@ else
   log_success "Added oh-my-posh init to $BASHRC."
 fi
 
-# 9. Shell aliases
+# 11. Shell aliases
 if [ "$OS_TYPE" = "Darwin" ]; then
   LS_ALIAS="alias ls='ls -G'"
 else
@@ -531,7 +594,7 @@ for alias_line in "${ALIASES[@]}"; do
   fi
 done
 
-# 10. Homebrew analytics opt-out (not applicable on MSYS2)
+# 12. Homebrew analytics opt-out (not applicable on MSYS2)
 if [ "$OS_TYPE" != "MSYS2" ]; then
   HOMEBREW_LINE="export HOMEBREW_NO_ANALYTICS=1"
   log "Configuring Homebrew analytics opt-out in $BASHRC..."
@@ -543,7 +606,7 @@ if [ "$OS_TYPE" != "MSYS2" ]; then
   fi
 fi
 
-# 11. Disable terminal flow control (enables CTRL+S for forward history search)
+# 13. Disable terminal flow control (enables CTRL+S for forward history search)
 FLOW_CONTROL_LINE="stty -ixon"
 log "Configuring terminal flow control in $BASHRC..."
 if grep -qxF "$FLOW_CONTROL_LINE" "$BASHRC" 2>/dev/null; then
@@ -553,7 +616,7 @@ else
   log_success "Added: $FLOW_CONTROL_LINE"
 fi
 
-# 12. Eternal bash history
+# 14. Eternal bash history
 HISTORY_LINES=(
   "export HISTFILESIZE=999999"
   "export HISTSIZE=999999"
@@ -571,31 +634,7 @@ for line in "${HISTORY_LINES[@]}"; do
   fi
 done
 
-# 13. SSH agent (MSYS2 only — macOS uses Keychain, Linux typically has a system agent)
-# Reuses an existing agent across terminal windows; starts a new one (prompting for passphrase once) if needed.
-if [ "$OS_TYPE" = "MSYS2" ]; then
-  log "Configuring SSH agent setup in $BASHRC..."
-  if grep -qF "SSH_ENV=" "$BASHRC" 2>/dev/null; then
-    log "SSH agent setup already in $BASHRC, skipping."
-  else
-    cat >> "$BASHRC" << 'EOF'
-# SSH agent — reuse existing agent if still running, otherwise start a new one
-SSH_ENV="$HOME/.ssh/agent.env"
-if [ -f "$SSH_ENV" ]; then
-  . "$SSH_ENV" > /dev/null
-fi
-if [ -z "${SSH_AGENT_PID:-}" ] || ! kill -0 "$SSH_AGENT_PID" 2>/dev/null; then
-  ssh-agent | sed 's/^echo/#echo/' > "$SSH_ENV"
-  chmod 600 "$SSH_ENV"
-  . "$SSH_ENV" > /dev/null
-  [ -f "$HOME/.ssh/id_ed25519" ] && ssh-add "$HOME/.ssh/id_ed25519"
-fi
-EOF
-    log_success "Added SSH agent setup to $BASHRC."
-  fi
-fi
-
-# 14. MSYS2: git-completion from Git for Windows — must be last so bash-completion cannot overwrite it
+# 15. MSYS2: git-completion from Git for Windows — must be last so bash-completion cannot overwrite it
 if [ "$OS_TYPE" = "MSYS2" ]; then
   GIT_COMPLETION_LINE='[[ -r "/c/Program Files/Git/mingw64/share/git/completion/git-completion.bash" ]] && . "/c/Program Files/Git/mingw64/share/git/completion/git-completion.bash"'
   log "Configuring Git for Windows completion in $BASHRC (at end to prevent overwrite)..."
