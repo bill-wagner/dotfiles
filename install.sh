@@ -377,12 +377,15 @@ fi
 # (e.g. a tool compiling from source), and this section must still run so a failed install
 # leaves a working shell (oh-my-posh, aliases, PATH, etc.) instead of none at all.
 # Order matters: PATH setup (Homebrew, asdf, MSYS2 mingw64) must come before anything that uses those tools (oh-my-posh).
-# It also matters for a second reason: Claude Code on Windows runs its Bash tool through a
-# non-interactive MSYS2 bash that still sources this file on every invocation. HOME/PATH exports
-# and SSH agent setup must work there, so they're placed ahead of the interactive-shell guard
-# below; everything that requires a TTY or is only useful in an interactive terminal (oh-my-posh,
-# stty, aliases, history, completions, the MSYS2 footgun warning) is placed after the guard so it
-# doesn't run — and in stty's case, error — on every non-interactive tool call.
+# It also matters for a second reason: Claude Code on Windows runs its Bash tool via `bash --login`
+# with $HOME=$USERPROFILE (confirmed live: non-interactive, login shell), which reaches
+# $USERPROFILE/.bashrc — not $BASHRC (the MSYS2-internal home a native `bash --login -i` terminal
+# uses) — via a pre-existing, not-repo-managed $USERPROFILE/.bash_profile. HOME/PATH exports and
+# SSH agent setup must work there, so they (and the shim in step 4 that makes $USERPROFILE/.bashrc
+# delegate to $BASHRC) are placed ahead of the interactive-shell guard below; everything that
+# requires a TTY or is only useful in an interactive terminal (oh-my-posh, stty, aliases, history,
+# completions) is placed after the guard so it doesn't run — and in stty's case, error — on every
+# non-interactive tool call.
 
 # One-time migration (MSYS2 only): every step below is idempotent by content (grep -qxF before
 # appending), so existing installs that predate the interactive-shell guard already have these
@@ -454,10 +457,56 @@ EOF
   fi
 fi
 
-# 4. Interactive-shell guard — everything below this line is skipped for non-interactive
-# invocations (e.g. Claude Code's Windows Bash tool sourcing this file via non-interactive MSYS2
-# bash), so oh-my-posh init, stty, aliases, history, completions, and the MSYS2 footgun warning
-# below don't run (or, in stty's case, error) on every tool call.
+# 4. MSYS2: make $USERPROFILE/.bashrc a shim that sources the real MSYS2-internal .bashrc.
+# Confirmed on a live Windows machine: Claude Code's Bash tool runs `bash --login` (login,
+# non-interactive; $HOME=$USERPROFILE). A pre-existing $USERPROFILE/.bash_profile — installed by
+# Git for Windows, not managed by this repo — sources $USERPROFILE/.bashrc as part of the normal
+# login-shell chain (see `man bash` LOGIN SHELLS). A native MSYS2 terminal (`bash --login -i`)
+# instead starts with HOME=$MSYS2_INTERNAL_HOME and reaches $MSYS2_INTERNAL_HOME/.bashrc directly
+# via its own default profile. Without this shim the two paths silently diverge — which is
+# exactly what happened before this fix: this script's real config only ever updated
+# $MSYS2_INTERNAL_HOME/.bashrc, while Claude Code kept reading a stale, un-updated
+# $USERPROFILE/.bashrc left over from the file this script used to (do BASHRC="$HOME/.bashrc")
+# manage directly.
+if [ "$OS_TYPE" = "MSYS2" ]; then
+  SHIM_MARKER="MSYS2 dotfiles shim"
+  if grep -qF "$SHIM_MARKER" "$HOME/.bashrc" 2>/dev/null; then
+    log "MSYS2 dotfiles shim already in $HOME/.bashrc, skipping."
+  else
+    if [ -f "$HOME/.bashrc" ]; then
+      SHIM_BACKUP="$HOME/.bashrc.pre-shim-fix.$(date +%Y%m%d%H%M%S).bak"
+      log "Existing $HOME/.bashrc predates the MSYS2 dotfiles shim; backing up to $SHIM_BACKUP and replacing."
+      cp "$HOME/.bashrc" "$SHIM_BACKUP"
+      : > "$HOME/.bashrc"
+    fi
+    log "Adding MSYS2 dotfiles shim to $HOME/.bashrc..."
+    cat >> "$HOME/.bashrc" << EOF
+# $SHIM_MARKER — added by https://github.com/bill-wagner/dotfiles/blob/master/install.sh
+# This is not the managed config — it exists only because a login shell whose \$HOME is already
+# \$USERPROFILE (e.g. Claude Code's Bash tool) reaches this file instead of the MSYS2-internal
+# home. Delegate to the real one.
+[ -r "$MSYS2_INTERNAL_HOME/.bashrc" ] && . "$MSYS2_INTERNAL_HOME/.bashrc"
+EOF
+    log_success "Added MSYS2 dotfiles shim to $HOME/.bashrc."
+  fi
+
+  # $USERPROFILE/.bash_profile is NOT managed by this repo — it's whatever Git for Windows (or the
+  # user) created, and its own "source ~/.bashrc" line is *why* the shim above gets reached at all
+  # in a login shell. Only strip the now-obsolete footgun warning this script used to append there
+  # (it fired unconditionally on every Claude Code Bash tool call, and its premise — that sourcing
+  # this file is a mistake — is no longer true now that .bashrc is a working shim); leave the rest
+  # of the file untouched.
+  if grep -qF "MSYS2 footgun warning" "$HOME/.bash_profile" 2>/dev/null; then
+    log "Removing obsolete MSYS2 footgun warning from $HOME/.bash_profile..."
+    sed -i '/# MSYS2 footgun warning/,/^fi$/d' "$HOME/.bash_profile"
+    log_success "Removed obsolete MSYS2 footgun warning from $HOME/.bash_profile."
+  fi
+fi
+
+# 5. Interactive-shell guard — everything below this line is skipped for non-interactive
+# invocations (e.g. Claude Code's Windows Bash tool, which reaches this file via the shim above),
+# so oh-my-posh init, stty, aliases, history, and completions below don't run (or, in stty's
+# case, error) on every tool call.
 GUARD_LINE='[[ $- == *i* ]] || return'
 log "Configuring interactive-shell guard in $BASHRC..."
 if grep -qxF "$GUARD_LINE" "$BASHRC" 2>/dev/null; then
@@ -467,7 +516,7 @@ else
   log_success "Added interactive-shell guard to $BASHRC."
 fi
 
-# 5. Warn on every new interactive shell if a previous install.sh run failed partway through.
+# 6. Warn on every new interactive shell if a previous install.sh run failed partway through.
 # Checked right after the MSYS2 HOME override above so $HOME (and thus the marker path) matches
 # where handle_failure wrote it.
 log "Configuring install-failure warning in $BASHRC..."
@@ -487,32 +536,6 @@ if [ -f "$DOTFILES_INSTALL_FAILED_MARKER" ]; then
 fi
 EOF
   log_success "Added install-failure warning to $BASHRC."
-fi
-
-# 6. MSYS2: write a runtime warning into $USERPROFILE/.bashrc and .bash_profile.
-# These files are NOT auto-sourced by MSYS2 at startup; they only become reachable via
-# 'source ~/.bashrc' after $HOME is changed to $USERPROFILE mid-session — a subtle footgun.
-# The warning detects MSYS2 at source-time and prints a reminder to the user.
-if [ "$OS_TYPE" = "MSYS2" ]; then
-  for warn_file in "$HOME/.bashrc" "$HOME/.bash_profile"; do
-    if grep -qF "MSYS2 footgun warning" "$warn_file" 2>/dev/null; then
-      log "MSYS2 sourcing warning already in $warn_file, skipping."
-    else
-      log "Adding MSYS2 sourcing warning to $warn_file..."
-      cat >> "$warn_file" << EOF
-
-# MSYS2 footgun warning — added by https://github.com/bill-wagner/dotfiles/blob/master/install.sh
-# This file is NOT automatically sourced by MSYS2 at startup.
-if uname -s 2>/dev/null | grep -qE '(MSYS|MINGW)'; then
-  echo "WARNING: You are in an MSYS2 session and have sourced a file from your Windows" >&2
-  echo "user profile. This file is NOT automatically sourced by MSYS2 at startup." >&2
-  echo "MSYS2 reads shell config from: $MSYS2_INTERNAL_HOME/.bashrc" >&2
-  echo "To reload your MSYS2 shell config, run: source $MSYS2_INTERNAL_HOME/.bashrc" >&2
-fi
-EOF
-      log_success "Added MSYS2 sourcing warning to $warn_file."
-    fi
-  done
 fi
 
 # 7. Homebrew shell environment (sets PATH so Homebrew tools are available; not applicable on MSYS2)
