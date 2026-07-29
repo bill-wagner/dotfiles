@@ -405,6 +405,19 @@ if [ "$OS_TYPE" = "MSYS2" ] && [ -f "$BASHRC" ] && ! grep -qxF "$GUARD_LINE" "$B
   log_success "Backed up and cleared $BASHRC for regeneration."
 fi
 
+# One-time migration (MSYS2 only): the SSH agent approach changed from a per-session `ssh-agent`
+# spawn (see step 3 below for why) to the Windows OpenSSH Authentication Agent service's named
+# pipe. Existing installs still have the old "SSH_ENV=" block; same backup-and-regenerate
+# approach as the guard migration above, since the old block can't just be appended around.
+SSH_AUTH_SOCK_LINE='export SSH_AUTH_SOCK="//./pipe/openssh-ssh-agent"'
+if [ "$OS_TYPE" = "MSYS2" ] && [ -f "$BASHRC" ] && grep -qF "SSH_ENV=" "$BASHRC" 2>/dev/null && ! grep -qxF "$SSH_AUTH_SOCK_LINE" "$BASHRC" 2>/dev/null; then
+  BASHRC_BACKUP="$BASHRC.pre-ssh-fix.$(date +%Y%m%d%H%M%S).bak"
+  log "Existing $BASHRC has the old per-session SSH agent approach; backing up to $BASHRC_BACKUP and regenerating."
+  cp "$BASHRC" "$BASHRC_BACKUP"
+  : > "$BASHRC"
+  log_success "Backed up and cleared $BASHRC for regeneration."
+fi
+
 # 1. MSYS2: set HOME to $USERPROFILE so Windows-native tools (Claude, etc.) find config in the right place
 if [ "$OS_TYPE" = "MSYS2" ]; then
   HOME_LINE='export HOME="$USERPROFILE"'
@@ -431,29 +444,35 @@ if [ "$OS_TYPE" = "MSYS2" ]; then
   fi
 fi
 
-# 3. MSYS2: SSH agent setup (macOS uses Keychain, Linux typically has a system agent). Reuses an
-# existing agent across terminal windows; starts a new one (prompting for passphrase once) if
-# needed. Placed before the interactive-shell guard below so non-interactive tools like Claude
-# Code's Windows Bash tool can use SSH for git operations.
+# 3. MSYS2: point SSH_AUTH_SOCK at the Windows OpenSSH Authentication Agent service's named pipe
+# (macOS uses Keychain, Linux typically has a system agent). This replaces a per-session
+# `ssh-agent` spawn that cached its socket path to a file — a live diagnostic traced git's
+# "Permission denied (publickey)" failures under Claude Code to that approach: the cached
+# agent.env file stores the socket path with Windows-style backslashes, and a fresh
+# non-interactive MSYS2 bash reading it back mangles the path (backslashes stripped instead of
+# translated to forward slashes), so ssh-add/git can't reach the agent. The named pipe needs no
+# path translation and works identically for interactive and non-interactive shells, so — like
+# the old approach was meant to — it's placed before the interactive-shell guard below, ahead of
+# non-interactive tools like Claude Code's Windows Bash tool doing git operations over SSH.
 if [ "$OS_TYPE" = "MSYS2" ]; then
-  log "Configuring SSH agent setup in $BASHRC..."
-  if grep -qF "SSH_ENV=" "$BASHRC" 2>/dev/null; then
-    log "SSH agent setup already in $BASHRC, skipping."
+  log "Configuring SSH_AUTH_SOCK (Windows OpenSSH Authentication Agent) in $BASHRC..."
+  if grep -qxF "$SSH_AUTH_SOCK_LINE" "$BASHRC" 2>/dev/null; then
+    log "SSH_AUTH_SOCK already configured in $BASHRC, skipping."
   else
-    cat >> "$BASHRC" << 'EOF'
-# SSH agent — reuse existing agent if still running, otherwise start a new one
-SSH_ENV="$HOME/.ssh/agent.env"
-if [ -f "$SSH_ENV" ]; then
-  . "$SSH_ENV" > /dev/null
-fi
-if [ -z "${SSH_AGENT_PID:-}" ] || ! kill -0 "$SSH_AGENT_PID" 2>/dev/null; then
-  ssh-agent | sed 's/^echo/#echo/' > "$SSH_ENV"
-  chmod 600 "$SSH_ENV"
-  . "$SSH_ENV" > /dev/null
-  [ -f "$HOME/.ssh/id_ed25519" ] && ssh-add "$HOME/.ssh/id_ed25519"
-fi
-EOF
-    log_success "Added SSH agent setup to $BASHRC."
+    echo "$SSH_AUTH_SOCK_LINE" >> "$BASHRC"
+    log_success "Added SSH_AUTH_SOCK (Windows OpenSSH Authentication Agent) to $BASHRC."
+  fi
+
+  # Checked once here, at install time — not baked into .bashrc, so this doesn't run a service
+  # query on every shell startup (interactive or not).
+  if command -v sc.exe &>/dev/null && sc.exe query ssh-agent 2>/dev/null | grep -q RUNNING; then
+    log "Windows OpenSSH Authentication Agent service is running."
+  else
+    log_action \
+      "The Windows OpenSSH Authentication Agent service isn't running (or couldn't be checked)." \
+      "SSH git operations — including Claude Code's — need it for key access." \
+      "In services.msc, set 'OpenSSH Authentication Agent' to Automatic and start it," \
+      "then run: ssh-add ~/.ssh/id_ed25519"
   fi
 fi
 

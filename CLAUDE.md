@@ -67,7 +67,7 @@ skips everything else — which requires a TTY or is otherwise only useful in a 
 non-interactive shells:
 1. MSYS2: `export HOME="$USERPROFILE"` so Windows-native tools find config in the right place
 2. MSYS2: `/mingw64/bin:/ucrt64/bin` prepended to PATH
-3. MSYS2: SSH agent setup — reuses existing agent across terminal windows, starts a new one if needed; must come before the guard so non-interactive tools (e.g. Claude Code's git operations) can use SSH
+3. MSYS2: `export SSH_AUTH_SOCK="//./pipe/openssh-ssh-agent"`, pointing at the Windows OpenSSH Authentication Agent service's named pipe; must come before the guard so non-interactive tools (e.g. Claude Code's git operations) can use SSH. Replaces a per-session `ssh-agent` spawn that cached its socket path to a file — a live diagnostic traced git's "Permission denied (publickey)" failures under Claude Code to that file's socket path getting mangled (Windows backslashes stripped, not translated) when read back by a fresh non-interactive MSYS2 bash. The named pipe needs no path translation. install.sh also checks once (at install time, not baked into `.bashrc`) whether the Windows service is running via `sc.exe query ssh-agent`, and prints an ACTION REQUIRED banner (enable it in `services.msc`, then `ssh-add ~/.ssh/id_ed25519` once) if not
 4. MSYS2: writes the `$USERPROFILE/.bashrc` shim described above (sources `$BASHRC`), and strips the now-obsolete "footgun warning" this script used to append to `$USERPROFILE/.bash_profile` (that warning fired unconditionally on every Claude Code Bash tool call, and its premise — that sourcing this file is a mistake — is no longer true now that it's a working shim)
 5. Interactive-shell guard — `[[ $- == *i* ]] || return`; everything below is skipped for non-interactive invocations
 6. Install-failure warning — checks for `~/.dotfiles-install-failed` and warns on stderr if a previous run failed (all platforms)
@@ -84,16 +84,17 @@ non-interactive shells:
 All `.bashrc` additions use `grep -xF` (exact whole-line match) to avoid matching commented-out example lines in the default `.bashrc`.
 
 Because steps 1-5 land ahead of everything else, and appends are idempotent by content (skipped if
-the exact line already exists), an MSYS2 install from before the guard/shim existed would keep its
-old, pre-fix state forever if re-run — none of its lines are "missing" so none would move or get
-replaced. To fix that, one-time migrations (MSYS2 only) detect a `$BASHRC` without the guard line,
-or a `$USERPROFILE/.bashrc` without the shim marker, back the file up, and truncate it so it
-regenerates from scratch in the corrected form. This is scoped to MSYS2 only because that's the
-only platform where these files are known to be entirely owned by this script; on macOS/Linux,
-`$BASHRC` is the user's own `~/.bashrc`, so this script only ever appends to it and never truncates
-it. `$USERPROFILE/.bash_profile` is never truncated on any platform — it's owned by Git for
-Windows, not this repo, and this script only ever strips its own obsolete footgun-warning block
-from it.
+the exact line already exists), an MSYS2 install from before the guard/shim/SSH-agent-approach
+existed would keep its old, pre-fix state forever if re-run — none of its lines are "missing" so
+none would move or get replaced. To fix that, one-time migrations (MSYS2 only) detect a `$BASHRC`
+without the guard line, a `$BASHRC` with the old `SSH_ENV=` marker but not the new
+`SSH_AUTH_SOCK` line, or a `$USERPROFILE/.bashrc` without the shim marker, back the file up, and
+truncate it so it regenerates from scratch in the corrected form. This is scoped to MSYS2 only
+because that's the only platform where these files are known to be entirely owned by this script;
+on macOS/Linux, `$BASHRC` is the user's own `~/.bashrc`, so this script only ever appends to it and
+never truncates it. `$USERPROFILE/.bash_profile` is never truncated on any platform — it's owned
+by Git for Windows, not this repo, and this script only ever strips its own obsolete
+footgun-warning block from it.
 
 **Tool installation, part 2** (in order, after `.bashrc` configuration):
 1. asdf tool installation — runs `asdf install` from the repo's `.tool-versions` (nodejs, python, ruby, sqlite, yarn, kubectl, golang, helm), copies it to `~/.tool-versions` as global fallback, then installs project-specific tools if a `.tool-versions` exists in the working directory (macOS/Linux only)
