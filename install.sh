@@ -746,6 +746,19 @@ if [ "$OS_TYPE" = "Darwin" ]; then
   fi
 fi
 
+# MSYS2: make git use the native Windows OpenSSH client instead of the MSYS2-bundled one for SSH
+# operations. MSYS2's ssh is built on Cygwin's Unix-domain-socket emulation, which cannot talk to
+# the Windows OpenSSH Authentication Agent service — that service (and the SSH_AUTH_SOCK named
+# pipe pointing at it, set in .bashrc above) only understands Windows named pipes, not Unix
+# sockets. This was traced live: setting SSH_AUTH_SOCK to the named pipe alone wasn't enough,
+# because MSYS2's ssh still couldn't use it — git needs to invoke the Windows-native ssh.exe,
+# which does understand named pipes, for its SSH operations to reach the agent at all.
+if [ "$OS_TYPE" = "MSYS2" ]; then
+  log "Configuring git to use the native Windows OpenSSH client..."
+  git config --global core.sshCommand "C:/Windows/System32/OpenSSH/ssh.exe"
+  log_success "git core.sshCommand set to the native Windows OpenSSH client."
+fi
+
 # A clean run means everything above succeeded — clear any stale failure marker so new shells
 # stop warning about a prior failed run.
 rm -f "$INSTALL_FAILED_MARKER"

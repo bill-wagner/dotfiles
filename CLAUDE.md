@@ -101,7 +101,8 @@ footgun-warning block from it.
 2. Global `.gitignore` — copies `.gitignore_global` to `~/.gitignore_global` and registers it via `git config --global core.excludesfile`
 3. git-delta global config — sets `core.pager`, `interactive.diffFilter`, and `delta.*` options via `git config --global`
 4. SSH key → macOS Keychain via `ssh-add --apple-use-keychain` (macOS only)
-5. On success, removes `~/.dotfiles-install-failed` if present
+5. `git config --global core.sshCommand "C:/Windows/System32/OpenSSH/ssh.exe"` (MSYS2 only) — MSYS2's bundled `ssh` is built on Cygwin's Unix-domain-socket emulation and cannot talk to the Windows OpenSSH Authentication Agent service (named pipe only), so git needs to shell out to the native Windows `ssh.exe` instead for SSH operations to reach the agent at all. Traced live: the `SSH_AUTH_SOCK` named pipe from `.bashrc` step 3 alone wasn't sufficient — MSYS2's own `ssh` binary can't use it regardless
+6. On success, removes `~/.dotfiles-install-failed` if present
 
 ## Key Files
 
