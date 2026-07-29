@@ -381,11 +381,11 @@ fi
 # with $HOME=$USERPROFILE (confirmed live: non-interactive, login shell), which reaches
 # $USERPROFILE/.bashrc — not $BASHRC (the MSYS2-internal home a native `bash --login -i` terminal
 # uses) — via a pre-existing, not-repo-managed $USERPROFILE/.bash_profile. HOME/PATH exports and
-# SSH agent setup must work there, so they (and the shim in step 4 that makes $USERPROFILE/.bashrc
-# delegate to $BASHRC) are placed ahead of the interactive-shell guard below; everything that
-# requires a TTY or is only useful in an interactive terminal (oh-my-posh, stty, aliases, history,
-# completions) is placed after the guard so it doesn't run — and in stty's case, error — on every
-# non-interactive tool call.
+# SSH_AUTH_SOCK setup must work there, so they (and the shim in step 4 that makes
+# $USERPROFILE/.bashrc delegate to $BASHRC) are placed ahead of the interactive-shell guard below;
+# everything that requires a TTY or is only useful in an interactive terminal (oh-my-posh, stty,
+# aliases, history, completions, SSH key autoload) is placed after the guard so it doesn't run —
+# and in stty's case, error — on every non-interactive tool call.
 
 # One-time migration (MSYS2 only): every step below is idempotent by content (grep -qxF before
 # appending), so existing installs that predate the interactive-shell guard already have these
@@ -406,9 +406,10 @@ if [ "$OS_TYPE" = "MSYS2" ] && [ -f "$BASHRC" ] && ! grep -qxF "$GUARD_LINE" "$B
 fi
 
 # One-time migration (MSYS2 only): the SSH agent approach changed from a per-session `ssh-agent`
-# spawn (see step 3 below for why) to the Windows OpenSSH Authentication Agent service's named
-# pipe. Existing installs still have the old "SSH_ENV=" block; same backup-and-regenerate
-# approach as the guard migration above, since the old block can't just be appended around.
+# spawn to the Windows OpenSSH Authentication Agent service (see step 3 and step 15 below, and the
+# core.sshCommand config further down, for the full three-part picture). Existing installs still
+# have the old "SSH_ENV=" block; same backup-and-regenerate approach as the guard migration above,
+# since the old block can't just be appended around.
 SSH_AUTH_SOCK_LINE='export SSH_AUTH_SOCK="//./pipe/openssh-ssh-agent"'
 if [ "$OS_TYPE" = "MSYS2" ] && [ -f "$BASHRC" ] && grep -qF "SSH_ENV=" "$BASHRC" 2>/dev/null && ! grep -qxF "$SSH_AUTH_SOCK_LINE" "$BASHRC" 2>/dev/null; then
   BASHRC_BACKUP="$BASHRC.pre-ssh-fix.$(date +%Y%m%d%H%M%S).bak"
@@ -450,10 +451,16 @@ fi
 # "Permission denied (publickey)" failures under Claude Code to that approach: the cached
 # agent.env file stores the socket path with Windows-style backslashes, and a fresh
 # non-interactive MSYS2 bash reading it back mangles the path (backslashes stripped instead of
-# translated to forward slashes), so ssh-add/git can't reach the agent. The named pipe needs no
-# path translation and works identically for interactive and non-interactive shells, so — like
-# the old approach was meant to — it's placed before the interactive-shell guard below, ahead of
-# non-interactive tools like Claude Code's Windows Bash tool doing git operations over SSH.
+# translated to forward slashes). The named pipe needs no such path translation, so this line is
+# placed before the interactive-shell guard below, ahead of non-interactive tools like Claude
+# Code's Windows Bash tool doing git operations over SSH.
+# This alone is NOT sufficient, though: MSYS2's own `ssh`/`ssh-add` binaries are built on Cygwin's
+# Unix-domain-socket emulation and can't speak the named-pipe protocol at all, regardless of what
+# SSH_AUTH_SOCK points at — traced live after this fix alone still failed. Two more pieces complete
+# the picture: `git config --global core.sshCommand` (further down, after the asdf/gitignore/delta
+# config, near the end of this script) makes git shell out to the native Windows ssh.exe instead of
+# MSYS2's; step 15 below uses the native ssh-add.exe (not MSYS2's) to load the key into the service
+# in the first place.
 if [ "$OS_TYPE" = "MSYS2" ]; then
   log "Configuring SSH_AUTH_SOCK (Windows OpenSSH Authentication Agent) in $BASHRC..."
   if grep -qxF "$SSH_AUTH_SOCK_LINE" "$BASHRC" 2>/dev/null; then
@@ -472,7 +479,8 @@ if [ "$OS_TYPE" = "MSYS2" ]; then
       "The Windows OpenSSH Authentication Agent service isn't running (or couldn't be checked)." \
       "SSH git operations — including Claude Code's — need it for key access." \
       "In services.msc, set 'OpenSSH Authentication Agent' to Automatic and start it," \
-      "then run: ssh-add ~/.ssh/id_ed25519"
+      "then open a new interactive terminal — it'll auto-load your key (see step 15 below)," \
+      "or run it yourself right away: ssh-add ~/.ssh/id_ed25519"
   fi
 fi
 
@@ -524,8 +532,8 @@ fi
 
 # 5. Interactive-shell guard — everything below this line is skipped for non-interactive
 # invocations (e.g. Claude Code's Windows Bash tool, which reaches this file via the shim above),
-# so oh-my-posh init, stty, aliases, history, and completions below don't run (or, in stty's
-# case, error) on every tool call.
+# so oh-my-posh init, stty, aliases, history, completions, and SSH key autoload below don't run
+# (or, in stty's case, error) on every tool call.
 GUARD_LINE='[[ $- == *i* ]] || return'
 log "Configuring interactive-shell guard in $BASHRC..."
 if grep -qxF "$GUARD_LINE" "$BASHRC" 2>/dev/null; then
