@@ -676,7 +676,37 @@ for line in "${HISTORY_LINES[@]}"; do
   fi
 done
 
-# 15. MSYS2: git-completion from Git for Windows — must be last so bash-completion cannot overwrite it
+# 15. MSYS2: auto-load the SSH key into the Windows OpenSSH Authentication Agent service if it
+# isn't already loaded there. The service only keeps loaded keys for as long as it keeps running
+# (i.e. until the next reboot), so without this, the key needs re-adding manually after every
+# restart. Runs only in interactive shells (it's below the guard above) since it may prompt for a
+# passphrase — Claude Code's non-interactive Bash tool never reaches this and doesn't need to: it
+# just needs the key already loaded by the time it runs an SSH git operation, which the first
+# interactive terminal opened after a reboot takes care of. Checks the key's fingerprint against
+# already-loaded identities first so it doesn't re-prompt on every new terminal window.
+if [ "$OS_TYPE" = "MSYS2" ]; then
+  SSH_AUTOLOAD_MARKER="MSYS2 SSH key autoload"
+  if grep -qF "$SSH_AUTOLOAD_MARKER" "$BASHRC" 2>/dev/null; then
+    log "MSYS2 SSH key autoload already in $BASHRC, skipping."
+  else
+    log "Adding MSYS2 SSH key autoload to $BASHRC..."
+    cat >> "$BASHRC" << 'EOF'
+# MSYS2 SSH key autoload — added by https://github.com/bill-wagner/dotfiles/blob/master/install.sh
+if [ -f "$HOME/.ssh/id_ed25519" ]; then
+  SSH_ADD_EXE="/c/Windows/System32/OpenSSH/ssh-add.exe"
+  if [ -x "$SSH_ADD_EXE" ]; then
+    SSH_KEY_FP="$(ssh-keygen -lf "$HOME/.ssh/id_ed25519" 2>/dev/null | awk '{print $2}')"
+    if [ -n "$SSH_KEY_FP" ] && ! "$SSH_ADD_EXE" -l 2>/dev/null | grep -qF "$SSH_KEY_FP"; then
+      "$SSH_ADD_EXE" "$HOME/.ssh/id_ed25519"
+    fi
+  fi
+fi
+EOF
+    log_success "Added MSYS2 SSH key autoload to $BASHRC."
+  fi
+fi
+
+# 16. MSYS2: git-completion from Git for Windows — must be last so bash-completion cannot overwrite it
 if [ "$OS_TYPE" = "MSYS2" ]; then
   GIT_COMPLETION_LINE='[[ -r "/c/Program Files/Git/mingw64/share/git/completion/git-completion.bash" ]] && . "/c/Program Files/Git/mingw64/share/git/completion/git-completion.bash"'
   log "Configuring Git for Windows completion in $BASHRC (at end to prevent overwrite)..."
